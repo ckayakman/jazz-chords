@@ -177,3 +177,38 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
         return transpose(root, semitones, preferFlats);
     });
 }
+
+export function formatInterval(interval: Interval): string {
+    // Map internal interval codes to user-friendly labels
+    const map: Record<string, string> = {
+        "1P": "1",
+        "3m": "b3",
+        "3M": "3",
+        "4P": "4",
+        "4A": "#4",
+        "5d": "b5",
+        "5P": "5",
+        "5A": "#5",
+        "6M": "6",
+        "7m": "b7",
+        "7M": "7",
+        "9m": "b9",
+        "9M": "9",
+        "11P": "11",
+        "13M": "13"
+    };
+    return map[interval] || interval;
+}
+
+export function getIntervalMap(root: Note, intervals: Interval[]): Record<string, string> {
+    const notes = getNotesFromIntervals(root, intervals);
+    const map: Record<string, string> = {};
+
+    notes.forEach((note, index) => {
+        if (intervals[index]) {
+            map[note] = formatInterval(intervals[index]);
+        }
+    });
+
+    return map;
+}

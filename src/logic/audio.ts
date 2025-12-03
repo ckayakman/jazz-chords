@@ -2,7 +2,7 @@ import { FretPosition } from './voicing-generator';
 
 let audioCtx: AudioContext | null = null;
 
-function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
@@ -26,14 +26,13 @@ function getFrequency(stringIdx: number, fret: number): number {
     return baseFreq * Math.pow(2, fret / 12);
 }
 
-export function playChord(positions: FretPosition[]) {
+export function playChordAt(positions: FretPosition[], startTime: number) {
     const ctx = getAudioContext();
     if (ctx.state === 'suspended') {
         ctx.resume();
     }
 
-    const now = ctx.currentTime;
-    const duration = 3.0; // 3 seconds
+    const duration = 1.0; // Shorter duration for sequencer (quarter note at 90bpm is ~0.66s, let ring a bit)
 
     // Sort positions by string index (low to high) to simulate a downstroke strum
     const sortedPositions = [...positions].sort((a, b) => a.string - b.string);
@@ -41,26 +40,33 @@ export function playChord(positions: FretPosition[]) {
     sortedPositions.forEach((pos, index) => {
         const freq = getFrequency(pos.string, pos.fret);
 
-        // Stagger start times for strum effect (e.g., 30ms delay per string)
-        const startTime = now + index * 0.03;
+        // Stagger start times for strum effect (e.g., 20ms delay per string)
+        // Add to the scheduled startTime
+        const noteStart = startTime + index * 0.02;
 
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
 
-        osc.type = 'triangle'; // Triangle wave sounds a bit more like a guitar than sine
-        osc.frequency.setValueAtTime(freq, startTime);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, noteStart);
 
         // Envelope
         // Attack
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05); // Fast attack
+        gainNode.gain.setValueAtTime(0, noteStart);
+        gainNode.gain.linearRampToValueAtTime(0.3, noteStart + 0.05);
         // Decay/Sustain
-        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, noteStart + duration);
 
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
 
-        osc.start(startTime);
-        osc.stop(startTime + duration);
+        osc.start(noteStart);
+        osc.stop(noteStart + duration);
     });
+}
+
+export function playChord(positions: FretPosition[]) {
+    const ctx = getAudioContext();
+    // Play immediately (slightly in future to avoid clicks)
+    playChordAt(positions, ctx.currentTime + 0.05);
 }

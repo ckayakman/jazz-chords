@@ -4,9 +4,12 @@ import { playChord } from '../logic/audio';
 
 interface ChordDiagramProps {
     voicing: Voicing;
+    displayMode?: 'notes' | 'intervals';
+    intervalMap?: Record<string, string>;
+    onClick?: () => void;
 }
 
-const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing }) => {
+const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'notes', intervalMap = {}, onClick }) => {
     const { positions } = voicing;
 
     // Determine fret range to display
@@ -34,8 +37,8 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing }) => {
     return (
         <div
             className="chord-diagram cursor-pointer hover:bg-gray-800 rounded-lg transition-colors duration-200"
-            onClick={() => playChord(positions)}
-            title="Click to play"
+            onClick={onClick || (() => playChord(positions))}
+            title="Click to play or add to sequence"
         >
             <h3 className="text-center mb-2 text-lg font-semibold">{voicing.name}</h3>
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -99,7 +102,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing }) => {
                         <g key={i}>
                             <circle cx={stringX} cy={y} r={12} fill="#bb86fc" />
                             <text x={stringX} y={y + 4} fill="#000" fontSize="10" textAnchor="middle" fontWeight="bold">
-                                {pos.note}
+                                {displayMode === 'intervals' ? (intervalMap[pos.note] || pos.note) : pos.note}
                             </text>
                         </g>
                     );

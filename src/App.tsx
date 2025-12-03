@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { parseChord, getNotesFromIntervals } from './logic/music-theory'
+import { parseChord, getNotesFromIntervals, getIntervalMap } from './logic/music-theory'
 import { generateVoicings, Voicing } from './logic/voicing-generator'
 import ChordDiagram from './components/ChordDiagram'
+import Sequencer from './components/Sequencer'
+import { useSequencer } from './hooks/useSequencer'
+import { playChord } from './logic/audio'
+import FilterDropdown from './components/FilterDropdown'
 
 function App() {
     const [input, setInput] = useState('Cmin7(b5)')
@@ -11,6 +15,17 @@ function App() {
     const [drop3LowVoicings, setDrop3LowVoicings] = useState<Voicing[]>([])
     const [drop3HighVoicings, setDrop3HighVoicings] = useState<Voicing[]>([])
     const [error, setError] = useState('')
+    const [displayMode, setDisplayMode] = useState<'notes' | 'intervals'>('notes')
+    const [intervalMap, setIntervalMap] = useState<Record<string, string>>({})
+    const [activeFilters, setActiveFilters] = useState<string[]>(['all'])
+
+    // Sequencer State
+    const [sequence, setSequence] = useState<(Voicing | null)[]>(Array(16).fill(null))
+    const [activeSlot, setActiveSlot] = useState<number | null>(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const bpm = 90
+
+    const { currentBeat } = useSequencer({ sequence, bpm, isPlaying })
 
     useEffect(() => {
         handleSearch()
@@ -30,6 +45,8 @@ function App() {
         }
 
         const notes = getNotesFromIntervals(parsed.root, parsed.intervals)
+        const iMap = getIntervalMap(parsed.root, parsed.intervals)
+        setIntervalMap(iMap)
 
         let d2Top: Voicing[] = []
         let d2Mid: Voicing[] = []
@@ -109,6 +126,66 @@ function App() {
         }
     }
 
+    const handleChordClick = (voicing: Voicing) => {
+        if (activeSlot !== null) {
+            // Add to sequence
+            const newSeq = [...sequence]
+            // Create a new voicing object with the full name
+            newSeq[activeSlot] = {
+                ...voicing,
+                name: `${input} - ${voicing.name}`
+            }
+            setSequence(newSeq)
+
+            // Play preview
+            playChord(voicing.positions)
+
+            // Advance slot
+            setActiveSlot((prev) => (prev !== null && prev < 15) ? prev + 1 : null)
+        } else {
+            // Just play
+            playChord(voicing.positions)
+        }
+    }
+
+    const handleClearSlot = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation()
+        const newSeq = [...sequence]
+        newSeq[index] = null
+        setSequence(newSeq)
+    }
+
+    const handleFilterChange = (filterId: string) => {
+        if (filterId === 'all') {
+            setActiveFilters(['all'])
+            return
+        }
+
+        let newFilters = [...activeFilters]
+
+        // If 'all' was selected, remove it
+        if (newFilters.includes('all')) {
+            newFilters = []
+        }
+
+        if (newFilters.includes(filterId)) {
+            newFilters = newFilters.filter(f => f !== filterId)
+        } else {
+            newFilters.push(filterId)
+        }
+
+        // If no filters left, revert to 'all'
+        if (newFilters.length === 0) {
+            newFilters = ['all']
+        }
+
+        setActiveFilters(newFilters)
+    }
+
+    const shouldShowSection = (sectionId: string) => {
+        return activeFilters.includes('all') || activeFilters.includes(sectionId)
+    }
+
     return (
         <div className="app-container">
             <header>
@@ -125,6 +202,14 @@ function App() {
                     <button onClick={handleSearch} className="search-btn">
                         Visualize
                     </button>
+                    <button
+                        onClick={() => setDisplayMode(prev => prev === 'notes' ? 'intervals' : 'notes')}
+                        className="mode-toggle-btn"
+                        title={`Current view: ${displayMode}. Click to switch.`}
+                    >
+                        {displayMode === 'notes' ? 'Gb' : 'b5'}
+                    </button>
+                    <FilterDropdown selectedFilters={activeFilters} onFilterChange={handleFilterChange} />
                 </div>
                 {error && <p className="error-msg">{error}</p>}
 
@@ -159,57 +244,99 @@ function App() {
                 </details>
             </header>
 
+            <Sequencer
+                sequence={sequence}
+                activeSlot={activeSlot}
+                currentBeat={currentBeat}
+                isPlaying={isPlaying}
+                onSlotClick={setActiveSlot}
+                onClearSlot={handleClearSlot}
+                onPlay={() => setIsPlaying(true)}
+                onStop={() => setIsPlaying(false)}
+                onClearAll={() => setSequence(Array(16).fill(null))}
+            />
+
             <main>
-                {drop2TopVoicings.length > 0 && (
+                {drop2TopVoicings.length > 0 && shouldShowSection('drop2-top') && (
                     <section className="voicing-section">
                         <h2>Drop 2 Voicings - Top Strings (4,3,2,1)</h2>
                         <div className="diagram-grid">
                             {drop2TopVoicings.map((v, i) => (
-                                <ChordDiagram key={`d2t-${i}`} voicing={v} />
+                                <ChordDiagram
+                                    key={`d2t-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
                             ))}
                         </div>
                     </section>
                 )}
 
-                {drop2MiddleVoicings.length > 0 && (
+                {drop2MiddleVoicings.length > 0 && shouldShowSection('drop2-mid') && (
                     <section className="voicing-section">
                         <h2>Drop 2 Voicings - Middle Strings (5,4,3,2)</h2>
                         <div className="diagram-grid">
                             {drop2MiddleVoicings.map((v, i) => (
-                                <ChordDiagram key={`d2m-${i}`} voicing={v} />
+                                <ChordDiagram
+                                    key={`d2m-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
                             ))}
                         </div>
                     </section>
                 )}
 
-                {drop2BottomVoicings.length > 0 && (
+                {drop2BottomVoicings.length > 0 && shouldShowSection('drop2-bot') && (
                     <section className="voicing-section">
                         <h2>Drop 2 Voicings - Low Strings (6,5,4,3)</h2>
                         <div className="diagram-grid">
                             {drop2BottomVoicings.map((v, i) => (
-                                <ChordDiagram key={`d2b-${i}`} voicing={v} />
+                                <ChordDiagram
+                                    key={`d2b-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
                             ))}
                         </div>
                     </section>
                 )}
 
-                {drop3LowVoicings.length > 0 && (
+                {drop3LowVoicings.length > 0 && shouldShowSection('drop3-bot') && (
                     <section className="voicing-section">
                         <h2>Drop 3 Voicings - Low Strings (6,4,3,2)</h2>
                         <div className="diagram-grid">
                             {drop3LowVoicings.map((v, i) => (
-                                <ChordDiagram key={`d3l-${i}`} voicing={v} />
+                                <ChordDiagram
+                                    key={`d3l-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
                             ))}
                         </div>
                     </section>
                 )}
 
-                {drop3HighVoicings.length > 0 && (
+                {drop3HighVoicings.length > 0 && shouldShowSection('drop3-top') && (
                     <section className="voicing-section">
                         <h2>Drop 3 Voicings - High Strings (5,3,2,1)</h2>
                         <div className="diagram-grid">
                             {drop3HighVoicings.map((v, i) => (
-                                <ChordDiagram key={`d3h-${i}`} voicing={v} />
+                                <ChordDiagram
+                                    key={`d3h-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
                             ))}
                         </div>
                     </section>
