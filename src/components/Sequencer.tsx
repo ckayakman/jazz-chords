@@ -7,6 +7,8 @@ interface SequencerProps {
     activeSlot: number | null;
     currentBeat: number;
     isPlaying: boolean;
+    bpm: number;
+    onBpmChange: (bpm: number) => void;
     onSlotClick: (index: number) => void;
     onClearSlot: (index: number, e: React.MouseEvent) => void;
     onPlay: () => void;
@@ -19,23 +21,60 @@ const Sequencer: React.FC<SequencerProps> = ({
     activeSlot,
     currentBeat,
     isPlaying,
+    bpm,
+    onBpmChange,
     onSlotClick,
     onClearSlot,
     onPlay,
     onStop,
     onClearAll
 }) => {
+    // Local state for input to allow typing without immediate clamping
+    const [localBpm, setLocalBpm] = React.useState(bpm.toString());
+
+    // Sync local state when prop changes (e.g. if set externally)
+    React.useEffect(() => {
+        setLocalBpm(bpm.toString());
+    }, [bpm]);
+
+    const handleBpmCommit = () => {
+        let val = parseInt(localBpm);
+        if (isNaN(val)) val = 90; // Default fallback
+        const clamped = Math.min(160, Math.max(40, val));
+        setLocalBpm(clamped.toString());
+        onBpmChange(clamped);
+    };
+
     return (
         <details className="w-full max-w-4xl mx-auto mt-8 bg-gray-50 rounded-xl border border-gray-200 shadow-sm group">
             <summary
-                className="p-6 cursor-pointer font-bold transition-colors outline-none hover:opacity-80"
+                className="p-6 cursor-pointer font-bold transition-colors outline-none hover:opacity-80 flex items-center justify-between"
                 style={{ fontSize: '1.8rem', color: 'var(--secondary-color)' }}
             >
-                Chord Sequencer (90 BPM)
+                <span>Chord Sequencer</span>
             </summary>
 
             <div className="px-6 pb-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="flex justify-end gap-2 mb-4">
+                <div className="flex justify-end gap-2 mb-4 items-center whitespace-nowrap">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-text" onClick={() => document.getElementById('bpm-input')?.focus()}>
+                        <label htmlFor="bpm-input" className="text-sm font-semibold cursor-pointer">BPM:</label>
+                        <input
+                            id="bpm-input"
+                            type="number"
+                            min="40"
+                            max="160"
+                            value={localBpm}
+                            onChange={(e) => setLocalBpm(e.target.value)}
+                            onBlur={handleBpmCommit}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleBpmCommit();
+                                    (e.target as HTMLInputElement).blur();
+                                }
+                            }}
+                            className="w-12 bg-transparent text-center outline-none focus:ring-0 font-bold"
+                        />
+                    </div>
                     <button
                         onClick={isPlaying ? onStop : onPlay}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isPlaying

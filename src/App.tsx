@@ -23,7 +23,7 @@ function App() {
     const [sequence, setSequence] = useState<(Voicing | null)[]>(Array(16).fill(null))
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
-    const bpm = 90
+    const [bpm, setBpm] = useState(90)
 
     const { currentBeat } = useSequencer({ sequence, bpm, isPlaying })
 
@@ -238,6 +238,11 @@ function App() {
                                 <li><span className="font-mono font-bold">Minor 7(b9)</span> (m7b9): 1, b3, 5, b7, b9</li>
                                 <li><span className="font-mono font-bold">Major 7 #4</span> (maj7#4): 1, 3, #4, 7</li>
                                 <li><span className="font-mono font-bold">6th Chords</span> (6, m6): 1, 3/b3, 5, 6</li>
+                                <li><span className="font-mono font-bold">Minor Major 7</span> (mmaj7): 1, b3, 5, 7</li>
+                                <li><span className="font-mono font-bold">Augmented Major 7</span> (maj7#5): 1, 3, #5, 7</li>
+                                <li><span className="font-mono font-bold">Augmented Dominant 7</span> (7#5): 1, 3, #5, b7</li>
+                                <li><span className="font-mono font-bold">Dominant 7 #11</span> (7#11): 1, 3, 5, b7, #11</li>
+                                <li><span className="font-mono font-bold">Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
                             </ul>
                         </div>
                     </div>
@@ -249,6 +254,8 @@ function App() {
                 activeSlot={activeSlot}
                 currentBeat={currentBeat}
                 isPlaying={isPlaying}
+                bpm={bpm}
+                onBpmChange={setBpm}
                 onSlotClick={setActiveSlot}
                 onClearSlot={handleClearSlot}
                 onPlay={() => setIsPlaying(true)}

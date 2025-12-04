@@ -131,6 +131,21 @@ export function parseChord(name: string): ChordComponents | null {
     } else if (rest === "m9" || rest === "min9" || rest === "-9") {
         quality = "Minor 9";
         intervals = ["1P", "3m", "5P", "7m", "9M"];
+    } else if (rest === "mmaj7" || rest === "minmaj7" || rest === "-maj7") {
+        quality = "Minor Major 7";
+        intervals = ["1P", "3m", "5P", "7M"];
+    } else if (rest === "maj7#5" || rest === "maj7(#5)" || rest === "M7#5" || rest === "M7(#5)") {
+        quality = "Augmented Major 7";
+        intervals = ["1P", "3M", "5A", "7M"];
+    } else if (rest === "dom7#5" || rest === "dom7(#5)" || rest === "7#5" || rest === "7(#5)") {
+        quality = "Augmented Dominant 7";
+        intervals = ["1P", "3M", "5A", "7m"];
+    } else if (rest === "dom7#11" || rest === "7#11" || rest === "dom7(#11)" || rest === "7(#11)") {
+        quality = "Dominant 7 #11";
+        intervals = ["1P", "3M", "5P", "7m", "11A"];
+    } else if (rest === "dom7sus4" || rest === "7sus4") {
+        quality = "Dominant 7 sus4";
+        intervals = ["1P", "4P", "5P", "7m"];
     } else {
         return null;
     }
@@ -148,7 +163,7 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
     // Actually, let's just use the root and a simple check.
     // If intervals contains '3m', it's minor-ish.
     const isMinor = intervals.includes('3m');
-    const isDom = intervals.includes('7m') && intervals.includes('3M');
+    const isDom = intervals.includes('7m') && (intervals.includes('3M') || intervals.includes('4P')); // 4P for sus4
     const isDim = intervals.includes('5d');
 
     let quality = "Major";
@@ -164,6 +179,7 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
             case "1P": semitones = 0; break;
             case "3m": semitones = 3; break;
             case "3M": semitones = 4; break;
+            case "4P": semitones = 5; break;
             case "4A": semitones = 6; break;
             case "5d": semitones = 6; break;
             case "5P": semitones = 7; break;
@@ -173,8 +189,16 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
             case "7M": semitones = 11; break;
             case "9m": semitones = 13; break;
             case "9M": semitones = 14; break;
+            case "11A": semitones = 18; break; // Same pitch class as #4 (6 semitones)
         }
-        return transpose(root, semitones, preferFlats);
+
+        // Force sharps for Augmented intervals (e.g. #5, #11) unless root dictates otherwise?
+        // Actually, just locally prefer sharps for 'A' intervals if the global preference was flats,
+        // to avoid "Ab" for #5 in C7.
+        let localPreferFlats = preferFlats;
+        if (interval.endsWith('A')) localPreferFlats = false;
+
+        return transpose(root, semitones, localPreferFlats);
     });
 }
 
@@ -195,6 +219,7 @@ export function formatInterval(interval: Interval): string {
         "9m": "b9",
         "9M": "9",
         "11P": "11",
+        "11A": "#11",
         "13M": "13"
     };
     return map[interval] || interval;
