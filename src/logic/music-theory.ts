@@ -146,6 +146,10 @@ export function parseChord(name: string): ChordComponents | null {
     } else if (rest === "dom7sus4" || rest === "7sus4") {
         quality = "Dominant 7 sus4";
         intervals = ["1P", "4P", "5P", "7m"];
+    } else if (rest === "alt" || rest === "7alt" || rest === "dom7alt") {
+        quality = "Altered Dominant";
+        // Base intervals for identification, but App.tsx will expand this into multiple variations
+        intervals = ["1P", "3M", "7m"];
     } else {
         return null;
     }
@@ -189,6 +193,7 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
             case "7M": semitones = 11; break;
             case "9m": semitones = 13; break;
             case "9M": semitones = 14; break;
+            case "9A": semitones = 15; break; // #9
             case "11A": semitones = 18; break; // Same pitch class as #4 (6 semitones)
         }
 
@@ -218,6 +223,7 @@ export function formatInterval(interval: Interval): string {
         "7M": "7",
         "9m": "b9",
         "9M": "9",
+        "9A": "#9",
         "11P": "11",
         "11A": "#11",
         "13M": "13"

@@ -3,19 +3,19 @@ import { Voicing } from '../logic/voicing-generator';
 import { playChord } from '../logic/audio';
 
 interface ChordDiagramProps {
-    voicing: Voicing;
+    voicing: Voicing | null;
     displayMode?: 'notes' | 'intervals';
     intervalMap?: Record<string, string>;
     onClick?: () => void;
 }
 
 const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'notes', intervalMap = {}, onClick }) => {
-    const { positions } = voicing;
+    const positions = voicing ? voicing.positions : [];
 
     // Determine fret range to display
     const frets = positions.map(p => p.fret);
-    const minFret = Math.min(...frets);
-    const maxFret = Math.max(...frets);
+    const minFret = frets.length > 0 ? Math.min(...frets) : 1;
+    const maxFret = frets.length > 0 ? Math.max(...frets) : 5;
 
 
     // Display a window of 5 frets.
@@ -36,11 +36,11 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
 
     return (
         <div
-            className="chord-diagram cursor-pointer hover:bg-gray-800 rounded-lg transition-colors duration-200"
-            onClick={onClick || (() => playChord(positions))}
+            className="chord-diagram cursor-pointer hover:bg-gray-800 rounded-lg transition-colors duration-200 inline-block"
+            onClick={onClick || (() => positions.length > 0 && playChord(positions))}
             title="Click to play or add to sequence"
         >
-            <h3 className="text-center mb-2 text-lg font-semibold">{voicing.name}</h3>
+            <h3 className="text-center mb-2 text-lg font-semibold min-h-[1.75rem]">{voicing ? voicing.name : 'Rest'}</h3>
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
                 {/* Fretboard background */}
                 <rect x={padding} y={padding} width={width - 2 * padding} height={height - 2 * padding} fill="#2a2a2a" />

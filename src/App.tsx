@@ -60,6 +60,44 @@ function App() {
             d2Bot = generateVoicings(notes, 'Drop2', [0, 1, 2, 3])
             d3Low = generateVoicings(notes, 'Drop3', [0, 2, 3, 4])
             d3High = generateVoicings(notes, 'Drop3', [1, 3, 4, 5])
+        } else if (parsed.quality === 'Altered Dominant') {
+            // Generate multiple variations for "Alt" chords
+            // Variations: 7b9b5, 7#9b5, 7b9#5, 7#9#5
+            // All are rootless: 3, 7, alt5, alt9
+
+            const variations = [
+                { suffix: '(b9 b5)', intervals: ['1P', '3M', '5d', '7m', '9m'] },
+                { suffix: '(#9 b5)', intervals: ['1P', '3M', '5d', '7m', '9A'] },
+                { suffix: '(b9 #5)', intervals: ['1P', '3M', '5A', '7m', '9m'] },
+                { suffix: '(#9 #5)', intervals: ['1P', '3M', '5A', '7m', '9A'] },
+            ];
+
+            // Update interval map to include all possible altered intervals for correct display
+            // Collect all unique intervals from variations
+            const allIntervals = Array.from(new Set(variations.flatMap(v => v.intervals)));
+            const expandedMap = getIntervalMap(parsed.root, allIntervals);
+            setIntervalMap(expandedMap);
+
+            const genRootless = (v: { suffix: string, intervals: string[] }, type: 'Drop2' | 'Drop3', strings: number[]) => {
+                const vNotes = getNotesFromIntervals(parsed.root, v.intervals);
+                // Rootless: 3rd, 5th, 7th, 9th -> Indices 1, 2, 3, 4
+                // Note: getNotesFromIntervals returns [Root, 3, 5, 7, 9]
+                const rootlessNotes = [vNotes[1], vNotes[2], vNotes[3], vNotes[4]];
+
+                return generateVoicings(rootlessNotes, type, strings).map(voicing => ({
+                    ...voicing,
+                    name: `${voicing.name} ${v.suffix}`
+                }));
+            };
+
+            variations.forEach(v => {
+                d2Top.push(...genRootless(v, 'Drop2', [2, 3, 4, 5]));
+                d2Mid.push(...genRootless(v, 'Drop2', [1, 2, 3, 4]));
+                d2Bot.push(...genRootless(v, 'Drop2', [0, 1, 2, 3]));
+                d3Low.push(...genRootless(v, 'Drop3', [0, 2, 3, 4]));
+                d3High.push(...genRootless(v, 'Drop3', [1, 3, 4, 5]));
+            });
+
         } else if (notes.length === 5) {
             // 5-note chord (e.g. 9th chords): Root, 3rd, 5th, 7th, 9th
             // Generate two sets: Omit 5 and Omit Root
@@ -243,6 +281,7 @@ function App() {
                                 <li><span className="font-mono font-bold">Augmented Dominant 7</span> (7#5): 1, 3, #5, b7</li>
                                 <li><span className="font-mono font-bold">Dominant 7 #11</span> (7#11): 1, 3, 5, b7, #11</li>
                                 <li><span className="font-mono font-bold">Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
+                                <li><span className="font-mono font-bold">Altered Dominant</span> (alt, 7alt): 1, 3, b7 + (b5/#5, b9/#9)</li>
                             </ul>
                         </div>
                     </div>

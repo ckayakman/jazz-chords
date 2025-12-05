@@ -1,6 +1,7 @@
 import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { Play, Square, Trash2, X } from 'lucide-react';
+import ChordDiagram from './ChordDiagram';
 
 interface SequencerProps {
     sequence: (Voicing | null)[];
@@ -93,58 +94,76 @@ const Sequencer: React.FC<SequencerProps> = ({
                     </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                    {/* 4 Measures */}
-                    {[0, 1, 2, 3].map(measureIdx => (
-                        <div key={measureIdx} className="bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-                            <div className="text-xs text-gray-400 mb-2 font-mono text-center">Measure {measureIdx + 1}</div>
-                            <div className="grid grid-cols-4 gap-2">
-                                {[0, 1, 2, 3].map(beatIdx => {
-                                    const globalIdx = measureIdx * 4 + beatIdx;
-                                    const voicing = sequence[globalIdx];
-                                    const isActive = activeSlot === globalIdx;
-                                    const isPlayingBeat = currentBeat === globalIdx;
-
-                                    return (
-                                        <div
-                                            key={globalIdx}
-                                            onClick={() => onSlotClick(globalIdx)}
-                                            className={`
-                                                relative h-16 rounded cursor-pointer transition-all border-2 flex items-center justify-center text-xs text-center p-1
-                                                ${isActive ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'}
-                                                ${isPlayingBeat ? 'bg-blue-100 scale-105' : 'bg-gray-50'}
-                                                ${voicing ? 'bg-indigo-50 text-indigo-900 font-semibold' : 'text-gray-400'}
-                                            `}
-                                        >
-                                            <div className="flex items-center justify-center gap-1 w-full h-full">
-                                                {isActive && (
-                                                    <span className="text-blue-600 font-bold text-lg leading-none">►</span>
-                                                )}
-                                                {voicing ? (
-                                                    <div className="flex-1 min-w-0">
-                                                        <span className="line-clamp-2">{voicing.name}</span>
-                                                        <button
-                                                            onClick={(e) => onClearSlot(globalIdx, e)}
-                                                            className="absolute -top-1 -right-1 bg-white rounded-full border border-gray-200 p-0.5 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <X size={10} />
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="opacity-30">{beatIdx + 1}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                {isPlaying ? (
+                    <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in duration-300">
+                        {/* Animation View */}
+                        <div className="text-4xl font-bold text-indigo-900 mb-6">
+                            Measure {Math.floor(currentBeat / 4) + 1} : Beat {(currentBeat % 4) + 1}
                         </div>
-                    ))}
-                </div>
 
-                <div className="mt-4 text-sm text-gray-500 text-center">
-                    <p>Click a slot to select it, then click a chord diagram below to add it to the sequence.</p>
-                </div>
+                        <div className="transform scale-125 origin-top inline-block">
+                            <ChordDiagram
+                                voicing={sequence[currentBeat]}
+                                // We can pass a dummy onClick or undefined since interaction isn't primary here
+                                onClick={undefined}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-4 gap-4">
+                        {/* 4 Measures */}
+                        {[0, 1, 2, 3].map(measureIdx => (
+                            <div key={measureIdx} className="bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                                <div className="text-xs text-gray-400 mb-2 font-mono text-center">Measure {measureIdx + 1}</div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[0, 1, 2, 3].map(beatIdx => {
+                                        const globalIdx = measureIdx * 4 + beatIdx;
+                                        const voicing = sequence[globalIdx];
+                                        const isActive = activeSlot === globalIdx;
+                                        // const isPlayingBeat = currentBeat === globalIdx; // Not needed in grid view if hidden during play
+
+                                        return (
+                                            <div
+                                                key={globalIdx}
+                                                onClick={() => onSlotClick(globalIdx)}
+                                                className={`
+                                                    relative h-16 rounded cursor-pointer transition-all border-2 flex items-center justify-center text-xs text-center p-1
+                                                    ${isActive ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'}
+                                                    ${voicing ? 'bg-indigo-50 text-indigo-900 font-semibold' : 'text-gray-400'}
+                                                `}
+                                            >
+                                                <div className="flex items-center justify-center gap-1 w-full h-full">
+                                                    {isActive && (
+                                                        <span className="text-blue-600 font-bold text-lg leading-none">►</span>
+                                                    )}
+                                                    {voicing ? (
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="line-clamp-2">{voicing.name}</span>
+                                                            <button
+                                                                onClick={(e) => onClearSlot(globalIdx, e)}
+                                                                className="absolute -top-1 -right-1 bg-white rounded-full border border-gray-200 p-0.5 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <X size={10} />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="opacity-30">{beatIdx + 1}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {!isPlaying && (
+                    <div className="mt-4 text-sm text-gray-500 text-center">
+                        <p>Click a slot to select it, then click a chord diagram below to add it to the sequence.</p>
+                    </div>
+                )}
             </div>
         </details>
     );
