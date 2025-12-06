@@ -20,12 +20,16 @@ function App() {
     const [activeFilters, setActiveFilters] = useState<string[]>(['all'])
 
     // Sequencer State
-    const [sequence, setSequence] = useState<(Voicing | null)[]>(Array(16).fill(null))
+    const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(16).fill(null))
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
+
     const [bpm, setBpm] = useState(90)
+    const [hasInteracted, setHasInteracted] = useState(false)
 
     const { currentBeat } = useSequencer({ sequence, bpm, isPlaying })
+
+
 
     useEffect(() => {
         handleSearch()
@@ -168,10 +172,11 @@ function App() {
         if (activeSlot !== null) {
             // Add to sequence
             const newSeq = [...sequence]
-            // Create a new voicing object with the full name
+            // Create a new voicing object with the full name and interval map
             newSeq[activeSlot] = {
                 ...voicing,
-                name: `${input} - ${voicing.name}`
+                name: `${input} - ${voicing.name}`,
+                intervalMap: intervalMap
             }
             setSequence(newSeq)
 
@@ -233,6 +238,12 @@ function App() {
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        onFocus={() => {
+                            if (!hasInteracted) {
+                                setInput('')
+                                setHasInteracted(true)
+                            }
+                        }}
                         onKeyDown={handleKeyDown}
                         placeholder="Enter chord (e.g. Cmin7(b5), Gmaj6)"
                         className="chord-input"
@@ -300,6 +311,8 @@ function App() {
                 onPlay={() => setIsPlaying(true)}
                 onStop={() => setIsPlaying(false)}
                 onClearAll={() => setSequence(Array(16).fill(null))}
+                displayMode={displayMode}
+                intervalMap={intervalMap}
             />
 
             <main>

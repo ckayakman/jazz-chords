@@ -102,7 +102,7 @@ h2 {
     transition: transform 0.3s;
 }
 
-.chord-diagram:hover {
+.chord-diagram.interactive:hover {
     transform: translateY(-5px);
 }
 

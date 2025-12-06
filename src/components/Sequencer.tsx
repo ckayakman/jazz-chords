@@ -4,7 +4,7 @@ import { Play, Square, Trash2, X } from 'lucide-react';
 import ChordDiagram from './ChordDiagram';
 
 interface SequencerProps {
-    sequence: (Voicing | null)[];
+    sequence: ((Voicing & { intervalMap?: Record<string, string> }) | null)[];
     activeSlot: number | null;
     currentBeat: number;
     isPlaying: boolean;
@@ -15,6 +15,8 @@ interface SequencerProps {
     onPlay: () => void;
     onStop: () => void;
     onClearAll: () => void;
+    displayMode: 'notes' | 'intervals';
+    intervalMap: Record<string, string>;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({
@@ -28,7 +30,9 @@ const Sequencer: React.FC<SequencerProps> = ({
     onClearSlot,
     onPlay,
     onStop,
-    onClearAll
+    onClearAll,
+    displayMode,
+    intervalMap
 }) => {
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
@@ -101,11 +105,17 @@ const Sequencer: React.FC<SequencerProps> = ({
                             Measure {Math.floor(currentBeat / 4) + 1} : Beat {(currentBeat % 4) + 1}
                         </div>
 
-                        <div className="transform scale-125 origin-top inline-block">
+                        <div
+                            className="transform scale-125 origin-top inline-block"
+                            style={{ width: 'max-content', margin: '0 auto' }}
+                        >
                             <ChordDiagram
                                 voicing={sequence[currentBeat]}
+                                displayMode={displayMode}
+                                intervalMap={sequence[currentBeat]?.intervalMap || intervalMap}
                                 // We can pass a dummy onClick or undefined since interaction isn't primary here
                                 onClick={undefined}
+                                interactive={false}
                             />
                         </div>
                     </div>

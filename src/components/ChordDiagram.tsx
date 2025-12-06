@@ -7,9 +7,10 @@ interface ChordDiagramProps {
     displayMode?: 'notes' | 'intervals';
     intervalMap?: Record<string, string>;
     onClick?: () => void;
+    interactive?: boolean;
 }
 
-const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'notes', intervalMap = {}, onClick }) => {
+const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'notes', intervalMap = {}, onClick, interactive = true }) => {
     const positions = voicing ? voicing.positions : [];
 
     // Determine fret range to display
@@ -36,9 +37,9 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
 
     return (
         <div
-            className="chord-diagram cursor-pointer hover:bg-gray-800 rounded-lg transition-colors duration-200 inline-block"
-            onClick={onClick || (() => positions.length > 0 && playChord(positions))}
-            title="Click to play or add to sequence"
+            className={`chord-diagram ${interactive ? 'interactive cursor-pointer hover:bg-gray-800' : ''} rounded-lg transition-colors duration-200 inline-block`}
+            onClick={interactive ? (onClick || (() => positions.length > 0 && playChord(positions))) : undefined}
+            title={interactive ? "Click to play or add to sequence" : undefined}
         >
             <h3 className="text-center mb-2 text-lg font-semibold min-h-[1.75rem]">{voicing ? voicing.name : 'Rest'}</h3>
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -67,7 +68,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
                         x2={padding + i * stringSpacing}
                         y2={height - padding}
                         stroke="#888"
-                        strokeWidth={i < 2 ? 1 : i < 4 ? 1.5 : 2} // Thicker for low strings? Actually low E is index 0 in our logic but index 0 here is left...
+                        strokeWidth={i < 2 ? 2 : i < 4 ? 1.5 : 1}
                     // Usually diagrams have Low E on left.
                     // Our logic: 0=Low E.
                     // So index 0 (left) should be Low E.
