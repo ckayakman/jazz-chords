@@ -15,6 +15,12 @@ export function useSequencer({ sequence, bpm, isPlaying }: UseSequencerProps) {
     const timerIDRef = useRef<number | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
 
+    // Keep sequence in a ref to access latest value in scheduler interval
+    const sequenceRef = useRef(sequence);
+    useEffect(() => {
+        sequenceRef.current = sequence;
+    }, [sequence]);
+
     // Lookahead constants
     const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
     const scheduleAheadTime = 0.1; // How far ahead to schedule audio (in seconds)
@@ -63,23 +69,31 @@ export function useSequencer({ sequence, bpm, isPlaying }: UseSequencerProps) {
     const nextNote = () => {
         const secondsPerBeat = 60.0 / bpm;
         nextNoteTimeRef.current += secondsPerBeat;
-        currentStepRef.current = (currentStepRef.current + 1) % 16; // Loop 16 steps
+
+        // Calculate dynamic loop length
+        let lastPopulatedIndex = -1;
+        sequenceRef.current.forEach((voicing, idx) => {
+            if (voicing) lastPopulatedIndex = idx;
+        });
+
+        // Default to 16 if empty, otherwise loop up to the end of the last populated measure
+        let loopSteps = 16;
+        if (lastPopulatedIndex !== -1) {
+            const maxMeasureIndex = Math.floor(lastPopulatedIndex / 4);
+            loopSteps = (maxMeasureIndex + 1) * 4;
+        }
+
+        currentStepRef.current = (currentStepRef.current + 1) % loopSteps;
     };
 
     const scheduleNote = (beatNumber: number, time: number) => {
-        // Update UI (using requestAnimationFrame for sync if needed, but setState is okay for this simple case)
-        // We use a draw callback or just set state. 
-        // Since audio is precise, we want UI to update roughly at 'time'.
-        // For simplicity in React, we just set state. It might be slightly early but acceptable.
-        // To be more precise, we could set a timeout to update the UI exactly when the note hits.
-
         const delay = (time - audioCtxRef.current!.currentTime) * 1000;
         setTimeout(() => {
             setCurrentBeat(beatNumber);
         }, Math.max(0, delay));
 
-        // Play audio
-        const voicing = sequence[beatNumber];
+        // Play audio using fresh sequence ref
+        const voicing = sequenceRef.current[beatNumber];
         if (voicing) {
             playChordAt(voicing.positions, time);
         }

@@ -46,6 +46,7 @@ h1 {
     color: white;
     outline: none;
     transition: border-color 0.3s;
+    width: 400px;
 }
 
 .chord-input:focus {
