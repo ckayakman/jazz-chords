@@ -77,7 +77,7 @@ export function useSequencer({ sequence, bpm, isPlaying }: UseSequencerProps) {
         });
 
         // Default to 16 if empty, otherwise loop up to the end of the last populated measure
-        let loopSteps = 16;
+        let loopSteps = 32;
         if (lastPopulatedIndex !== -1) {
             const maxMeasureIndex = Math.floor(lastPopulatedIndex / 4);
             loopSteps = (maxMeasureIndex + 1) * 4;

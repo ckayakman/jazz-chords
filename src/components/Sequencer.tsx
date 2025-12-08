@@ -51,17 +51,14 @@ const Sequencer: React.FC<SequencerProps> = ({
     };
 
     return (
-        <details className="w-full max-w-4xl mx-auto mt-8 bg-gray-50 rounded-xl border border-gray-200 shadow-sm group">
-            <summary
-                className="p-6 cursor-pointer font-bold transition-colors outline-none hover:opacity-80 flex items-center justify-between"
-                style={{ fontSize: '1.8rem', color: 'var(--secondary-color)' }}
-            >
+        <details className="sequencer-details group">
+            <summary className="sequencer-summary">
                 <span>Chord Sequencer</span>
             </summary>
 
-            <div className="px-6 pb-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="flex justify-end gap-2 mb-4 items-center whitespace-nowrap">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-text" onClick={() => document.getElementById('bpm-input')?.focus()}>
+            <div className="px-6 pb-6 fade-in-up">
+                <div className="sequencer-controls">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-text" style={{ backgroundColor: '#333', color: '#e0e0e0' }} onClick={() => document.getElementById('bpm-input')?.focus()}>
                         <label htmlFor="bpm-input" className="text-sm font-semibold cursor-pointer">BPM:</label>
                         <input
                             id="bpm-input"
@@ -78,20 +75,18 @@ const Sequencer: React.FC<SequencerProps> = ({
                                 }
                             }}
                             className="w-12 bg-transparent text-center outline-none focus:ring-0 font-bold"
+                            style={{ width: '3rem', background: 'transparent', textAlign: 'center', fontWeight: 'bold', outline: 'none', border: 'none', color: 'var(--primary-color)' }}
                         />
                     </div>
                     <button
                         onClick={isPlaying ? onStop : onPlay}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isPlaying
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                            }`}
+                        className={`control-btn ${isPlaying ? 'btn-stop' : 'btn-play'}`}
                     >
                         {isPlaying ? <><Square size={18} /> Stop</> : <><Play size={18} /> Play</>}
                     </button>
                     <button
                         onClick={onClearAll}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                        className="control-btn btn-clear"
                         title="Clear Sequence"
                     >
                         <Trash2 size={18} /> Clear
@@ -99,60 +94,53 @@ const Sequencer: React.FC<SequencerProps> = ({
                 </div>
 
                 {isPlaying ? (
-                    <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in duration-300">
-                        {/* Animation View */}
-                        <div className="text-4xl font-bold text-indigo-900 mb-6">
+                    <div className="sequencer-playback-view">
+                        {/* Playback View - Measure/Beat Indicator */}
+                        <div className="text-4xl font-bold mb-10" style={{ fontSize: '2rem', textAlign: 'center', marginBottom: '2.5rem', color: 'var(--text-color)' }}>
                             Measure {Math.floor(currentBeat / 4) + 1} : Beat {(currentBeat % 4) + 1}
                         </div>
 
                         <div
                             className="transform scale-125 origin-top inline-block"
-                            style={{ width: 'max-content', margin: '0 auto' }}
+                            style={{ width: 'max-content', margin: '0 auto', transform: 'scale(1.25)', marginTop: '0.5rem' }}
                         >
                             <ChordDiagram
                                 voicing={sequence[currentBeat]}
                                 displayMode={displayMode}
                                 intervalMap={sequence[currentBeat]?.intervalMap || intervalMap}
-                                // We can pass a dummy onClick or undefined since interaction isn't primary here
                                 onClick={undefined}
                                 interactive={false}
                             />
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-4 gap-4">
-                        {/* 4 Measures */}
-                        {[0, 1, 2, 3].map(measureIdx => (
-                            <div key={measureIdx} className="bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-                                <div className="text-xs text-gray-500 mb-2 font-mono text-center uppercase tracking-wider" style={{ fontStyle: 'italic' }}>Measure {measureIdx + 1}</div>
-                                <div className="grid grid-cols-4 gap-2">
+                    <div className="sequencer-scroll-container">
+                        {/* 8 Measures */}
+                        {Array.from({ length: 8 }, (_, i) => i).map(measureIdx => (
+                            <div key={measureIdx} className="sequencer-measure-card">
+                                <div className="measure-label">Measure {measureIdx + 1}</div>
+                                <div className="beat-grid">
                                     {[0, 1, 2, 3].map(beatIdx => {
                                         const globalIdx = measureIdx * 4 + beatIdx;
                                         const voicing = sequence[globalIdx];
                                         const isActive = activeSlot === globalIdx;
-                                        // const isPlayingBeat = currentBeat === globalIdx; // Not needed in grid view if hidden during play
 
                                         return (
                                             <div
                                                 key={globalIdx}
                                                 onClick={() => onSlotClick(globalIdx)}
-                                                className={`
-                                                    relative h-16 rounded cursor-pointer transition-all border-2 flex items-center justify-center text-xs text-center p-1
-                                                    ${isActive ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'}
-                                                    ${voicing ? 'bg-indigo-50 text-indigo-900 font-semibold' : 'text-gray-400'}
-                                                `}
+                                                className={`beat-slot ${isActive ? 'active' : ''} ${voicing ? 'occupied' : ''}`}
                                             >
-                                                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', padding: '0 0.5rem', position: 'relative' }}>
+                                                <div className="beat-slot-content">
                                                     {isActive && (
-                                                        <span className="text-blue-600 font-bold text-lg leading-none absolute top-1 left-1 opacity-50 z-10">►</span>
+                                                        <span className="play-cursor">►</span>
                                                     )}
 
-                                                    {/* Inner wrapper for text alignment */}
-                                                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: '8px' }}>
-                                                        <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider whitespace-nowrap flex-shrink-0">Beat {beatIdx + 1}</span>
+                                                    <div className="beat-text-wrapper">
+                                                        <span className="beat-label-mini">Beat {beatIdx + 1}</span>
                                                         {voicing && (
-                                                            <div className="min-w-0 text-left">
-                                                                <span className="truncate text-sm font-semibold leading-tight block">{voicing.name}</span>
+                                                            <div className="min-w-0 text-left" style={{ overflow: 'hidden' }}>
+                                                                <span className="chord-name-text">{voicing.name}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -160,7 +148,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                                                     {voicing && (
                                                         <button
                                                             onClick={(e) => onClearSlot(globalIdx, e)}
-                                                            className="absolute -top-1 -right-1 bg-white rounded-full border border-gray-200 p-0.5 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                                            className="slot-clear-btn"
                                                         >
                                                             <X size={10} />
                                                         </button>
@@ -176,7 +164,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                 )}
 
                 {!isPlaying && (
-                    <div className="mt-4 text-sm text-gray-500 text-center">
+                    <div className="mt-4 text-sm text-gray-500 text-center" style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.875rem', textAlign: 'center' }}>
                         <p>Click a beat to select it, then click a chord diagram below to add it to the sequence.</p>
                     </div>
                 )}

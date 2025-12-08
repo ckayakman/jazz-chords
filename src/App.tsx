@@ -23,7 +23,7 @@ function App() {
     const [activeFilters, setActiveFilters] = useState<string[]>(['all'])
 
     // Sequencer State
-    const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(16).fill(null))
+    const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(32).fill(null))
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
 
@@ -217,7 +217,7 @@ function App() {
             playChord(voicing.positions)
 
             // Advance slot
-            setActiveSlot((prev) => (prev !== null && prev < 15) ? prev + 1 : null)
+            setActiveSlot((prev) => (prev !== null && prev < 31) ? prev + 1 : null)
         } else {
             // Just play
             playChord(voicing.positions)
@@ -343,7 +343,7 @@ function App() {
                 onClearSlot={handleClearSlot}
                 onPlay={() => setIsPlaying(true)}
                 onStop={() => setIsPlaying(false)}
-                onClearAll={() => setSequence(Array(16).fill(null))}
+                onClearAll={() => setSequence(Array(32).fill(null))}
                 displayMode={displayMode}
                 intervalMap={intervalMap}
             />
