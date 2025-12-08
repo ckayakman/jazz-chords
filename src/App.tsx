@@ -13,7 +13,10 @@ function App() {
     const [drop2MiddleVoicings, setDrop2MiddleVoicings] = useState<Voicing[]>([])
     const [drop2BottomVoicings, setDrop2BottomVoicings] = useState<Voicing[]>([])
     const [drop3LowVoicings, setDrop3LowVoicings] = useState<Voicing[]>([])
+
     const [drop3HighVoicings, setDrop3HighVoicings] = useState<Voicing[]>([])
+    const [shellVoicings, setShellVoicings] = useState<Voicing[]>([])
+    const [freddieGreenVoicings, setFreddieGreenVoicings] = useState<Voicing[]>([])
     const [error, setError] = useState('')
     const [displayMode, setDisplayMode] = useState<'notes' | 'intervals'>('notes')
     const [intervalMap, setIntervalMap] = useState<Record<string, string>>({})
@@ -45,6 +48,9 @@ function App() {
             setDrop2BottomVoicings([])
             setDrop3LowVoicings([])
             setDrop3HighVoicings([])
+
+            setShellVoicings([])
+            setFreddieGreenVoicings([])
             return
         }
 
@@ -57,6 +63,8 @@ function App() {
         let d2Bot: Voicing[] = []
         let d3Low: Voicing[] = []
         let d3High: Voicing[] = []
+        let shell: Voicing[] = []
+        let fg: Voicing[] = []
 
         if (notes.length === 4) {
             d2Top = generateVoicings(notes, 'Drop2', [2, 3, 4, 5])
@@ -64,6 +72,12 @@ function App() {
             d2Bot = generateVoicings(notes, 'Drop2', [0, 1, 2, 3])
             d3Low = generateVoicings(notes, 'Drop3', [0, 2, 3, 4])
             d3High = generateVoicings(notes, 'Drop3', [1, 3, 4, 5])
+
+            // Shell & FG: Root, 3rd, 7th -> Indices 0, 1, 3
+            const shellNotes = [notes[0], notes[1], notes[3]]
+            shell = generateVoicings(shellNotes, 'Shell')
+            fg = generateVoicings(shellNotes, 'FreddieGreen')
+
         } else if (parsed.quality === 'Altered Dominant') {
             // Generate multiple variations for "Alt" chords
             // Variations: 7b9b5, 7#9b5, 7b9#5, 7#9#5
@@ -100,7 +114,14 @@ function App() {
                 d2Bot.push(...genRootless(v, 'Drop2', [0, 1, 2, 3]));
                 d3Low.push(...genRootless(v, 'Drop3', [0, 2, 3, 4]));
                 d3High.push(...genRootless(v, 'Drop3', [1, 3, 4, 5]));
+                d3High.push(...genRootless(v, 'Drop3', [1, 3, 4, 5]));
             });
+
+            // Shell & FG for Alt: Treat as Dominant 7 (1, 3, b7)
+            const shellNotes = getNotesFromIntervals(parsed.root, ['1P', '3M', '7m'])
+            shell = generateVoicings(shellNotes, 'Shell')
+            fg = generateVoicings(shellNotes, 'FreddieGreen')
+
 
         } else if (notes.length === 5) {
             // 5-note chord (e.g. 9th chords): Root, 3rd, 5th, 7th, 9th
@@ -145,13 +166,23 @@ function App() {
                 ...genAndLabel(notesOmitRoot, '(Omit Root)', 'Drop3', [1, 3, 4, 5])
             ]
 
+            // Shell & FG: Root, 3rd, 7th -> Indices 0, 1, 3
+            // Note: 5-note chords are R(0), 3(1), 5(2), 7(3), 9(4)
+            const shellNotes = [notes[0], notes[1], notes[3]]
+            shell = generateVoicings(shellNotes, 'Shell')
+            fg = generateVoicings(shellNotes, 'FreddieGreen')
+
+
         } else {
             setError('Currently only 4-note and 5-note chords are supported.')
             setDrop2TopVoicings([])
             setDrop2MiddleVoicings([])
             setDrop2BottomVoicings([])
             setDrop3LowVoicings([])
+            setDrop3LowVoicings([])
             setDrop3HighVoicings([])
+            setShellVoicings([])
+            setFreddieGreenVoicings([])
             return
         }
 
@@ -160,6 +191,8 @@ function App() {
         setDrop2BottomVoicings(d2Bot)
         setDrop3LowVoicings(d3Low)
         setDrop3HighVoicings(d3High)
+        setShellVoicings(shell)
+        setFreddieGreenVoicings(fg)
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -401,7 +434,41 @@ function App() {
                     </section>
                 )}
 
-                {drop2TopVoicings.length === 0 && drop2MiddleVoicings.length === 0 && drop2BottomVoicings.length === 0 && drop3LowVoicings.length === 0 && drop3HighVoicings.length === 0 && !error && (
+                {shellVoicings.length > 0 && shouldShowSection('shell') && (
+                    <section className="voicing-section">
+                        <h2>Shell Voicings (3-Note)</h2>
+                        <div className="diagram-grid">
+                            {shellVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`shell-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {freddieGreenVoicings.length > 0 && shouldShowSection('freddie-green') && (
+                    <section className="voicing-section">
+                        <h2>Freddie Green Style Voicings</h2>
+                        <div className="diagram-grid">
+                            {freddieGreenVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`fg-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {drop2TopVoicings.length === 0 && drop2MiddleVoicings.length === 0 && drop2BottomVoicings.length === 0 && drop3LowVoicings.length === 0 && drop3HighVoicings.length === 0 && shellVoicings.length === 0 && freddieGreenVoicings.length === 0 && !error && (
                     <p className="text-gray-500 mt-8">No voicings found within playable range (no open strings, span &le; 4).</p>
                 )}
             </main>

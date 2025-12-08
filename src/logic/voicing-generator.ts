@@ -34,9 +34,18 @@ function isSameNote(n1: Note, n2: Note): boolean {
     return getNoteIndex(n1) === getNoteIndex(n2);
 }
 
-export function generateVoicings(notes: Note[], type: 'Drop2' | 'Drop3', stringSetOverride?: number[]): Voicing[] {
-    // notes: [Root, 3rd, 5th, 7th] (assumed 4 notes)
-    if (notes.length !== 4) return [];
+export type VoicingType = 'Drop2' | 'Drop3' | 'Shell' | 'FreddieGreen';
+
+export function generateVoicings(notes: Note[], type: VoicingType, stringSetOverride?: number[]): Voicing[] {
+    // notes:
+    // For Drop2/Drop3: [Root, 3rd, 5th, 7th] (4 notes)
+    // For Shell/FreddieGreen: [Root, 3rd, 7th] (3 notes)
+
+    if (type === 'Drop2' || type === 'Drop3') {
+        if (notes.length !== 4) return [];
+    } else {
+        if (notes.length !== 3) return [];
+    }
 
     // 1. Generate the 4 close voicings (inversions)
     // [1, 3, 5, 7], [3, 5, 7, 1], [5, 7, 1, 3], [7, 1, 3, 5]
@@ -48,6 +57,11 @@ export function generateVoicings(notes: Note[], type: 'Drop2' | 'Drop3', stringS
     ];
 
     const voicings: Voicing[] = [];
+
+    if (type === 'Shell' || type === 'FreddieGreen') {
+        generateShellVoicings(notes, type, voicings);
+        return voicings;
+    }
 
     // Define processing order to ensure "Root Position" (Root in bass) comes first.
     // Drop 2:
@@ -126,6 +140,73 @@ export function generateVoicings(notes: Note[], type: 'Drop2' | 'Drop3', stringS
     }
 
     return voicings;
+}
+
+function generateShellVoicings(notes: Note[], type: 'Shell' | 'FreddieGreen', voicings: Voicing[]) {
+    // notes: [Root, 3rd, 7th]
+    // Shell/Freddie Green voicings are typically:
+    // 1. Root (6th string), 7th (4th string), 3rd (3rd string)
+    // 2. Root (6th string), 3rd (4th string), 7th (3rd string) -> Less common for strict shell, but possible
+    // 3. Root (5th string), 3rd (4th string), 7th (3rd string)
+    // 4. Root (5th string), 7th (4th string), 3rd (3rd string)
+
+    // Freddie Green style is often strictly on bottom strings (6, 4, 3) or (6, 5, 4 - rare for chords)
+    // We will define specific shapes.
+
+    const root = notes[0];
+    const third = notes[1];
+    const seventh = notes[2];
+
+    // Helper to generate a specific shape
+    const tryShape = (name: string, targetNotes: [Note, Note, Note], stringSet: [number, number, number]) => {
+        const possiblePositions: FretPosition[][] = [];
+        targetNotes.forEach((n, idx) => {
+            const s = stringSet[idx];
+            const positions: FretPosition[] = [];
+            for (let f = 1; f <= 16; f++) { // Shells usually lower on neck, but 16 is safe
+                if (isSameNote(getNoteAtFret(s, f), n)) {
+                    positions.push({ string: s, fret: f, note: n });
+                }
+            }
+            possiblePositions.push(positions);
+        });
+
+        const combinations = cartesian(possiblePositions);
+        combinations.forEach(combo => {
+            const frets = combo.map(p => p.fret);
+            const minFret = Math.min(...frets);
+            const maxFret = Math.max(...frets);
+            if (maxFret - minFret <= 4) { // Playable span
+                voicings.push({ name, positions: combo });
+            }
+        });
+    };
+
+    // Strings: E(0), A(1), D(2), G(3), B(4), E(5)
+
+    if (type === 'FreddieGreen') {
+        // Freddie Green: Focus on Low E string roots primarily, sometimes A string.
+        // Shape 1: Root (6), 7th (4), 3rd (3) -> R on E. (Indices: 0, 2, 3)
+        tryShape("FG Style (R-7-3)", [root, seventh, third], [0, 2, 3]);
+
+        // Shape 2: Root on A (5) -> 5, 4, 3 (Indices: 1, 2, 3)
+        // Classic FG A-string shape
+        tryShape("FG Style (R-7-3) A", [root, seventh, third], [1, 2, 3]);
+        tryShape("FG Style (R-3-7) A", [root, third, seventh], [1, 2, 3]);
+
+    } else {
+        // Shell Voicings (General)
+        // Set 1: Root on E (6) -> 6, 4, 3
+        tryShape("Shell R6 (R-7-3)", [root, seventh, third], [0, 2, 3]);
+        tryShape("Shell R6 (R-3-7)", [root, third, seventh], [0, 2, 3]);
+
+        // Set 2: Root on A (5) -> 5, 4, 3 (Indices: 1, 2, 3)
+        tryShape("Shell R5 (R-3-7)", [root, third, seventh], [1, 2, 3]);
+        tryShape("Shell R5 (R-7-3)", [root, seventh, third], [1, 2, 3]);
+
+        // Set 3: Root on A (5) -> 5, 3, 2 (Indices: 1, 3, 4)
+        tryShape("Shell R5 (R-7-3) High", [root, seventh, third], [1, 3, 4]);
+    }
 }
 
 function cartesian(arrays: FretPosition[][]): FretPosition[][] {
