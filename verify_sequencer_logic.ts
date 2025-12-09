@@ -2,7 +2,7 @@
 
 interface Voicing { name: string }
 
-let sequence: (Voicing | null)[] = Array(16).fill(null);
+let sequence: (Voicing | null)[] = Array(160).fill(null);
 let activeSlot: number | null = 0;
 
 function handleChordClick(voicing: Voicing) {
@@ -13,7 +13,7 @@ function handleChordClick(voicing: Voicing) {
         sequence = newSeq;
 
         // Advance slot
-        activeSlot = (activeSlot !== null && activeSlot < 15) ? activeSlot + 1 : null;
+        activeSlot = (activeSlot !== null && activeSlot < 159) ? activeSlot + 1 : null;
     }
 }
 
@@ -60,8 +60,8 @@ if (sequence[1] === null) {
     process.exit(1);
 }
 
-// 4. Fill slot 15 (last one)
-activeSlot = 15;
+// 4. Fill slot 159 (last one)
+activeSlot = 159;
 handleChordClick({ name: "End" });
 if (activeSlot === null) {
     console.log("PASS: Active slot became null after last slot");

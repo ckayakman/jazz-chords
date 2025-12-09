@@ -185,8 +185,8 @@ const Sequencer: React.FC<SequencerProps> = ({
                     </div>
                 ) : (
                     <div className="sequencer-scroll-container">
-                        {/* 8 Measures */}
-                        {Array.from({ length: 8 }, (_, i) => i).map(measureIdx => (
+                        {/* 40 Measures (was 8) */}
+                        {Array.from({ length: 40 }, (_, i) => i).map(measureIdx => (
                             <div key={measureIdx} className="sequencer-measure-card">
                                 <div className="measure-label">Measure {measureIdx + 1}</div>
                                 <div className="beat-grid">

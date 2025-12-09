@@ -24,7 +24,7 @@ function App() {
     const [activeFilters, setActiveFilters] = useState<string[]>(['all'])
 
     // Sequencer State
-    const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(32).fill(null))
+    const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(160).fill(null))
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
 
@@ -40,7 +40,14 @@ function App() {
             try {
                 const parsed = JSON.parse(saved)
                 if (validateSequence(parsed)) {
-                    setSequence(parsed)
+                    // Start with 160 nulls, then map over parsing
+                    // If the saved sequence is shorter, we might need to pad it to 160
+                    // But actually setSequence(parsed) will just set it to whatever size was saved.
+                    // If we want to ENFORCE 40 measures even for old saves, we should pad it.
+                    // For now, let's just trust parsed but ideally we should pad/truncate.
+                    // Given the user request is "capture size from 8 to 40", we should probably ensure it is always 160 long.
+                    const padded = Array(160).fill(null).map((_, i) => parsed[i] || null);
+                    setSequence(padded)
                 }
             } catch (e) {
                 console.error('Failed to load sequence from localStorage', e)
@@ -240,7 +247,7 @@ function App() {
             playChord(voicing.positions)
 
             // Advance slot
-            setActiveSlot((prev) => (prev !== null && prev < 31) ? prev + 1 : null)
+            setActiveSlot((prev) => (prev !== null && prev < 159) ? prev + 1 : null)
         } else {
             // Just play
             playChord(voicing.positions)
@@ -366,7 +373,7 @@ function App() {
                 onClearSlot={handleClearSlot}
                 onPlay={() => setIsPlaying(true)}
                 onStop={() => setIsPlaying(false)}
-                onClearAll={() => setSequence(Array(32).fill(null))}
+                onClearAll={() => setSequence(Array(160).fill(null))}
                 onLoad={(seq) => setSequence(seq)}
                 displayMode={displayMode}
                 intervalMap={intervalMap}
