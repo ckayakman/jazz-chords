@@ -238,6 +238,8 @@ h2 {
     transition: background-color 0.2s, transform 0.2s;
     border: none;
     cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
 }
 
 .control-btn:active {
@@ -455,6 +457,41 @@ h2 {
     align-items: center;
     justify-content: center;
     padding-top: 0.5rem;
-    padding-bottom: 5rem;
+    padding-bottom: 2rem;
     /* reduced space */
+}
+
+/* BPM Input Styles */
+.bpm-input-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: text;
+}
+
+.bpm-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #aaa;
+}
+
+.bpm-input {
+    width: 3.5rem;
+    padding: 0.4rem;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 6px;
+    border: 2px solid #333;
+    background-color: var(--surface-color);
+    color: white;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.bpm-input:focus {
+    border-color: var(--primary-color);
 }

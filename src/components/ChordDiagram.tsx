@@ -37,11 +37,11 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
 
     return (
         <div
-            className={`chord-diagram ${interactive ? 'interactive cursor-pointer hover:bg-gray-800' : ''} rounded-lg transition-colors duration-200 inline-block`}
+            className={`chord-diagram ${interactive ? 'interactive' : ''} inline-block`}
             onClick={interactive ? (onClick || (() => positions.length > 0 && playChord(positions))) : undefined}
             title={interactive ? "Click to play or add to sequence" : undefined}
         >
-            <h3 className="text-center mb-2 text-lg font-semibold min-h-[1.75rem]">{voicing ? voicing.name : 'Rest'}</h3>
+            <h3 className="mb-2">{voicing ? voicing.name : 'Rest'}</h3>
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
                 {/* Fretboard background */}
                 <rect x={padding} y={padding} width={width - 2 * padding} height={height - 2 * padding} fill="#2a2a2a" />

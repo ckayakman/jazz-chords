@@ -6,6 +6,7 @@ import Sequencer from './components/Sequencer'
 import { useSequencer } from './hooks/useSequencer'
 import { playChord } from './logic/audio'
 import FilterDropdown from './components/FilterDropdown'
+import { validateSequence } from './logic/persistence-utils'
 
 function App() {
     const [input, setInput] = useState('Cmin7(b5)')
@@ -31,6 +32,28 @@ function App() {
     const [hasInteracted, setHasInteracted] = useState(false)
 
     const { currentBeat } = useSequencer({ sequence, bpm, isPlaying })
+
+    // Auto-load from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('jazz-chords-sequence')
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved)
+                if (validateSequence(parsed)) {
+                    setSequence(parsed)
+                }
+            } catch (e) {
+                console.error('Failed to load sequence from localStorage', e)
+            }
+        }
+    }, [])
+
+    // Auto-save to localStorage
+    useEffect(() => {
+        // Save minimal data to avoid quota issues if it gets huge, 
+        // though our objects are small.
+        localStorage.setItem('jazz-chords-sequence', JSON.stringify(sequence))
+    }, [sequence])
 
 
 
@@ -174,7 +197,7 @@ function App() {
 
 
         } else {
-            setError('Currently only 4-note and 5-note chords are supported.')
+            setError('This app only supports 6th, 7th, and extended chords.')
             setDrop2TopVoicings([])
             setDrop2MiddleVoicings([])
             setDrop2BottomVoicings([])
@@ -295,37 +318,37 @@ function App() {
                 </div>
                 {error && <p className="error-msg">{error}</p>}
 
-                <details className="mt-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+                <details className="supported-chords-details" style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-color)' }}>
                         Supported Chords & Formulas
                     </summary>
-                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#aaa' }}>
                         <div>
-                            <h3 className="font-semibold mb-2">Basic 7th Chords</h3>
-                            <ul className="space-y-1" style={{ listStyleType: 'none', paddingLeft: 0 }}>
-                                <li><span className="font-mono font-bold">Major 7</span> (maj7, M7): 1, 3, 5, 7</li>
-                                <li><span className="font-mono font-bold">Dominant 7</span> (7, dom7): 1, 3, 5, b7</li>
-                                <li><span className="font-mono font-bold">Minor 7</span> (m7, min7, -7): 1, b3, 5, b7</li>
-                                <li><span className="font-mono font-bold">Half Diminished</span> (m7b5, ø): 1, b3, b5, b7</li>
-                                <li><span className="font-mono font-bold">Diminished 7</span> (dim7, o7): 1, b3, b5, bb7</li>
+                            <h3 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Basic 7th Chords</h3>
+                            <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7</span> (maj7, M7): 1, 3, 5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7</span> (7, dom7): 1, 3, 5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 7</span> (m7, min7, -7): 1, b3, 5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Half Diminished</span> (m7b5, ø): 1, b3, b5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Diminished 7</span> (dim7, o7): 1, b3, b5, bb7</li>
                             </ul>
                         </div>
                         <div>
-                            <h3 className="font-semibold mb-2">Extended & Altered</h3>
-                            <ul className="space-y-1" style={{ listStyleType: 'none', paddingLeft: 0 }}>
-                                <li><span className="font-mono font-bold">Major 9</span> (maj9): 1, 3, 5, 7, 9</li>
-                                <li><span className="font-mono font-bold">Dominant 9</span> (9): 1, 3, 5, b7, 9</li>
-                                <li><span className="font-mono font-bold">Minor 9</span> (m9): 1, b3, 5, b7, 9</li>
-                                <li><span className="font-mono font-bold">Dominant 7(b9)</span> (7b9): 1, 3, 5, b7, b9</li>
-                                <li><span className="font-mono font-bold">Minor 7(b9)</span> (m7b9): 1, b3, 5, b7, b9</li>
-                                <li><span className="font-mono font-bold">Major 7 #4</span> (maj7#4): 1, 3, #4, 7</li>
-                                <li><span className="font-mono font-bold">6th Chords</span> (6, m6): 1, 3/b3, 5, 6</li>
-                                <li><span className="font-mono font-bold">Minor Major 7</span> (mmaj7): 1, b3, 5, 7</li>
-                                <li><span className="font-mono font-bold">Augmented Major 7</span> (maj7#5): 1, 3, #5, 7</li>
-                                <li><span className="font-mono font-bold">Augmented Dominant 7</span> (7#5): 1, 3, #5, b7</li>
-                                <li><span className="font-mono font-bold">Dominant 7 #11</span> (7#11): 1, 3, 5, b7, #11</li>
-                                <li><span className="font-mono font-bold">Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
-                                <li><span className="font-mono font-bold">Altered Dominant</span> (alt, 7alt): 1, 3, b7 + (b5/#5, b9/#9)</li>
+                            <h3 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Extended & Altered</h3>
+                            <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 9</span> (maj9): 1, 3, 5, 7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 9</span> (9): 1, 3, 5, b7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 9</span> (m9): 1, b3, 5, b7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7(b9)</span> (7b9): 1, 3, 5, b7, b9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 7(b9)</span> (m7b9): 1, b3, 5, b7, b9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7 #4</span> (maj7#4): 1, 3, #4, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>6th Chords</span> (6, m6): 1, 3/b3, 5, 6</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor Major 7</span> (mmaj7): 1, b3, 5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Major 7</span> (maj7#5): 1, 3, #5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Dominant 7</span> (7#5): 1, 3, #5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 #11</span> (7#11): 1, 3, 5, b7, #11</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Altered Dominant</span> (alt, 7alt): 1, 3, b7 + (b5/#5, b9/#9)</li>
                             </ul>
                         </div>
                     </div>
@@ -344,6 +367,7 @@ function App() {
                 onPlay={() => setIsPlaying(true)}
                 onStop={() => setIsPlaying(false)}
                 onClearAll={() => setSequence(Array(32).fill(null))}
+                onLoad={(seq) => setSequence(seq)}
                 displayMode={displayMode}
                 intervalMap={intervalMap}
             />
@@ -469,7 +493,7 @@ function App() {
                 )}
 
                 {drop2TopVoicings.length === 0 && drop2MiddleVoicings.length === 0 && drop2BottomVoicings.length === 0 && drop3LowVoicings.length === 0 && drop3HighVoicings.length === 0 && shellVoicings.length === 0 && freddieGreenVoicings.length === 0 && !error && (
-                    <p className="text-gray-500 mt-8">No voicings found within playable range (no open strings, span &le; 4).</p>
+                    <p style={{ color: '#6b7280', marginTop: '2rem' }}>No voicings found within playable range (no open strings, span &le; 4).</p>
                 )}
             </main>
         </div>
