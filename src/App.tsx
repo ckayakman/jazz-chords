@@ -27,11 +27,19 @@ function App() {
     const [sequence, setSequence] = useState<((Voicing & { intervalMap?: Record<string, string> }) | null)[]>(Array(160).fill(null))
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
+    const [isPaused, setIsPaused] = useState(false)
 
     const [bpm, setBpm] = useState(90)
     const [hasInteracted, setHasInteracted] = useState(false)
 
-    const { currentBeat } = useSequencer({ sequence, bpm, isPlaying })
+    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused })
+
+    // Sync active slot when paused to allow editing
+    useEffect(() => {
+        if (isPaused && currentBeat !== -1) {
+            setActiveSlot(currentBeat);
+        }
+    }, [isPaused, currentBeat]);
 
     // Auto-load from localStorage on mount
     useEffect(() => {
@@ -246,8 +254,10 @@ function App() {
             // Play preview
             playChord(voicing.positions)
 
-            // Advance slot
-            setActiveSlot((prev) => (prev !== null && prev < 159) ? prev + 1 : null)
+            // Advance slot only if not paused (when paused, we want to replace the current beat repeatedly)
+            if (!isPaused) {
+                setActiveSlot((prev) => (prev !== null && prev < 159) ? prev + 1 : null)
+            }
         } else {
             // Just play
             playChord(voicing.positions)
@@ -367,14 +377,18 @@ function App() {
                 activeSlot={activeSlot}
                 currentBeat={currentBeat}
                 isPlaying={isPlaying}
+                isPaused={isPaused}
                 bpm={bpm}
                 onBpmChange={setBpm}
                 onSlotClick={setActiveSlot}
                 onClearSlot={handleClearSlot}
-                onPlay={() => setIsPlaying(true)}
-                onStop={() => setIsPlaying(false)}
+                onPlay={() => { setIsPlaying(true); setIsPaused(false); }}
+                onStop={() => { setIsPlaying(false); setIsPaused(false); }}
+                onPause={() => setIsPaused(true)}
+                onResume={() => setIsPaused(false)}
                 onClearAll={() => setSequence(Array(160).fill(null))}
                 onLoad={(seq) => setSequence(seq)}
+                onStepChange={stepTo}
                 displayMode={displayMode}
                 intervalMap={intervalMap}
             />

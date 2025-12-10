@@ -1,7 +1,7 @@
 import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { validateSequence } from '../logic/persistence-utils';
-import { Play, Square, Trash2, X, Download, Upload } from 'lucide-react';
+import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward } from 'lucide-react';
 import ChordDiagram from './ChordDiagram';
 
 interface SequencerProps {
@@ -9,12 +9,16 @@ interface SequencerProps {
     activeSlot: number | null;
     currentBeat: number;
     isPlaying: boolean;
+    isPaused: boolean;
     bpm: number;
     onBpmChange: (bpm: number) => void;
     onSlotClick: (index: number) => void;
     onClearSlot: (index: number, e: React.MouseEvent) => void;
     onPlay: () => void;
     onStop: () => void;
+    onPause: () => void;
+    onResume: () => void;
+    onStepChange: (step: number) => void;
     onClearAll: () => void;
     onLoad: (seq: any[]) => void;
     displayMode: 'notes' | 'intervals';
@@ -26,12 +30,16 @@ const Sequencer: React.FC<SequencerProps> = ({
     activeSlot,
     currentBeat,
     isPlaying,
+    isPaused,
     bpm,
     onBpmChange,
     onSlotClick,
     onClearSlot,
     onPlay,
     onStop,
+    onPause,
+    onResume,
+    onStepChange,
     onClearAll,
     onLoad,
     displayMode,
@@ -124,12 +132,25 @@ const Sequencer: React.FC<SequencerProps> = ({
                             className="bpm-input"
                         />
                     </div>
+
+                    {/* Play/Stop Button */}
                     <button
                         onClick={isPlaying ? onStop : onPlay}
                         className={`control-btn ${isPlaying ? 'btn-stop' : 'btn-play'}`}
                     >
                         {isPlaying ? <><Square size={18} /> Stop</> : <><Play size={18} /> Play</>}
                     </button>
+
+                    {/* Pause/Resume Button - Only visible when playing or paused */}
+                    {isPlaying && (
+                        <button
+                            onClick={isPaused ? onResume : onPause}
+                            className={`control-btn ${isPaused ? 'btn-play' : 'btn-stop'}`}
+                        >
+                            {isPaused ? <><Play size={18} /> Resume</> : <><Pause size={18} /> Pause</>}
+                        </button>
+                    )}
+
                     <button
                         onClick={onClearAll}
                         className="control-btn btn-clear"
@@ -165,9 +186,40 @@ const Sequencer: React.FC<SequencerProps> = ({
 
                 {isPlaying ? (
                     <div className="sequencer-playback-view">
-                        {/* Playback View - Measure/Beat Indicator */}
-                        <div style={{ fontSize: '1.8rem', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-color)', fontWeight: 'bold' }}>
-                            Measure {Math.floor(currentBeat / 4) + 1} : Beat {(currentBeat % 4) + 1}
+                        {/* Playback View - Measure/Beat Indicator with Navigation */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '1rem',
+                            marginBottom: '1rem'
+                        }}>
+                            {isPaused && (
+                                <button
+                                    onClick={() => onStepChange(currentBeat - 1)}
+                                    // Use explicit style or class. Inline for now as requested for speed/precision.
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', opacity: 0.8 }}
+                                    className="hover:opacity-100 transition-opacity"
+                                    title="Previous Beat"
+                                >
+                                    <SkipBack size={32} />
+                                </button>
+                            )}
+
+                            <div style={{ fontSize: '1.8rem', textAlign: 'center', color: 'var(--text-color)', fontWeight: 'bold' }}>
+                                Measure {Math.floor(currentBeat / 4) + 1} : Beat {(currentBeat % 4) + 1}
+                            </div>
+
+                            {isPaused && (
+                                <button
+                                    onClick={() => onStepChange(currentBeat + 1)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', opacity: 0.8 }}
+                                    className="hover:opacity-100 transition-opacity"
+                                    title="Next Beat"
+                                >
+                                    <SkipForward size={32} />
+                                </button>
+                            )}
                         </div>
 
                         <div

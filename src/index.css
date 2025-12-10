@@ -221,7 +221,7 @@ h2 {
 
 .sequencer-controls {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 0.5rem;
     margin-bottom: 1rem;
     align-items: center;
