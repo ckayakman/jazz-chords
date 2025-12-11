@@ -23,6 +23,7 @@ interface SequencerProps {
     onLoad: (seq: any[]) => void;
     displayMode: 'notes' | 'intervals';
     intervalMap: Record<string, string>;
+    onPaste: (start: number, end: number, target: number) => void;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({
@@ -43,15 +44,32 @@ const Sequencer: React.FC<SequencerProps> = ({
     onClearAll,
     onLoad,
     displayMode,
-    intervalMap
+    intervalMap,
+    onPaste
 }) => {
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
+    const [copyMode, setCopyMode] = React.useState<'idle' | 'start' | 'end' | 'target'>('idle');
+    const [copyStart, setCopyStart] = React.useState<number | null>(null);
+    const [copyEnd, setCopyEnd] = React.useState<number | null>(null);
 
     // Sync local state when prop changes (e.g. if set externally)
     React.useEffect(() => {
         setLocalBpm(bpm.toString());
     }, [bpm]);
+
+    // Scroll to current beat when entering copy mode while playing
+    React.useEffect(() => {
+        if (copyMode === 'start' && isPlaying) {
+            // Small timeout to allow render to switch to grid view
+            setTimeout(() => {
+                const el = document.getElementById(`beat-slot-${currentBeat}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                }
+            }, 100);
+        }
+    }, [copyMode, isPlaying, currentBeat]);
 
     const handleBpmCommit = () => {
         let val = parseInt(localBpm);
@@ -79,6 +97,49 @@ const Sequencer: React.FC<SequencerProps> = ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    };
+
+    const handleCopyClick = () => {
+        if (copyMode === 'idle') {
+            if (isPlaying && !isPaused) {
+                onPause();
+            }
+            setCopyMode('start');
+            setCopyStart(null);
+            setCopyEnd(null);
+        } else {
+            setCopyMode('idle');
+            setCopyStart(null);
+            setCopyEnd(null);
+        }
+    };
+
+    const handleSlotInteraction = (index: number) => {
+        if (copyMode === 'idle') {
+            onSlotClick(index);
+        } else if (copyMode === 'start') {
+            setCopyStart(index);
+            setCopyMode('end');
+        } else if (copyMode === 'end') {
+            // Ensure end is after start, swap if needed
+            let start = copyStart!;
+            let end = index;
+            if (end < start) {
+                const temp = start;
+                start = end;
+                end = temp;
+            }
+            setCopyStart(start);
+            setCopyEnd(end);
+            setCopyMode('target');
+        } else if (copyMode === 'target') {
+            if (copyStart !== null && copyEnd !== null) {
+                onPaste(copyStart, copyEnd, index);
+                setCopyMode('idle');
+                setCopyStart(null);
+                setCopyEnd(null);
+            }
+        }
     };
 
 
@@ -151,6 +212,15 @@ const Sequencer: React.FC<SequencerProps> = ({
                         </button>
                     )}
 
+                    {/* Copy Button */}
+                    <button
+                        onClick={handleCopyClick}
+                        className={`control-btn ref-copy-btn ${copyMode !== 'idle' ? 'btn-active-action' : 'btn-clear'}`}
+                        title="Copy Range"
+                    >
+                        <span style={{ fontWeight: 600 }}>{copyMode === 'idle' ? 'Copy' : 'Cancel Copy'}</span>
+                    </button>
+
                     <button
                         onClick={onClearAll}
                         className="control-btn btn-clear"
@@ -183,8 +253,15 @@ const Sequencer: React.FC<SequencerProps> = ({
                     />
                 </div>
 
+                {copyMode !== 'idle' && (
+                    <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
+                        {copyMode === 'start' && "Select Start Beat"}
+                        {copyMode === 'end' && "Select End Beat"}
+                        {copyMode === 'target' && "Select Target Beat to Paste"}
+                    </div>
+                )}
 
-                {isPlaying ? (
+                {isPlaying && copyMode === 'idle' ? (
                     <div className="sequencer-playback-view">
                         {/* Playback View - Measure/Beat Indicator with Navigation */}
                         <div style={{
@@ -247,11 +324,22 @@ const Sequencer: React.FC<SequencerProps> = ({
                                         const voicing = sequence[globalIdx];
                                         const isActive = activeSlot === globalIdx;
 
+                                        // Selection highlighting logic
+                                        let isHighlighted = false;
+                                        if (copyMode === 'end' && copyStart !== null) {
+                                            if (globalIdx === copyStart) isHighlighted = true;
+                                        }
+                                        if (copyMode === 'target' && copyStart !== null && copyEnd !== null) {
+                                            if (globalIdx >= copyStart && globalIdx <= copyEnd) isHighlighted = true;
+                                        }
+
                                         return (
                                             <div
                                                 key={globalIdx}
-                                                onClick={() => onSlotClick(globalIdx)}
-                                                className={`beat-slot ${isActive ? 'active' : ''} ${voicing ? 'occupied' : ''}`}
+                                                id={`beat-slot-${globalIdx}`}
+                                                onClick={() => handleSlotInteraction(globalIdx)}
+                                                className={`beat-slot ${isActive ? 'active' : ''} ${voicing ? 'occupied' : ''} ${isHighlighted ? 'highlight-select' : ''}`}
+                                                style={isHighlighted ? { borderColor: 'var(--primary-color)', backgroundColor: 'rgba(124, 58, 237, 0.1)' } : {}}
                                             >
                                                 <div className="beat-slot-content">
                                                     {isActive && (

@@ -271,6 +271,22 @@ function App() {
         setSequence(newSeq)
     }
 
+    const handlePaste = (start: number, end: number, target: number) => {
+        const newSeq = [...sequence]
+        const length = end - start + 1
+
+        for (let i = 0; i < length; i++) {
+            const sourceIdx = start + i
+            const targetIdx = target + i
+
+            if (targetIdx < newSeq.length) {
+                // Deep copy if not null to avoid reference issues
+                newSeq[targetIdx] = sequence[sourceIdx] ? JSON.parse(JSON.stringify(sequence[sourceIdx])) : null
+            }
+        }
+        setSequence(newSeq)
+    }
+
     const handleFilterChange = (filterId: string) => {
         if (filterId === 'all') {
             setActiveFilters(['all'])
@@ -387,10 +403,11 @@ function App() {
                 onPause={() => setIsPaused(true)}
                 onResume={() => setIsPaused(false)}
                 onClearAll={() => setSequence(Array(160).fill(null))}
-                onLoad={(seq) => setSequence(seq)}
+                onLoad={(seq: any) => setSequence(seq)}
                 onStepChange={stepTo}
                 displayMode={displayMode}
                 intervalMap={intervalMap}
+                onPaste={handlePaste}
             />
 
             <main>
