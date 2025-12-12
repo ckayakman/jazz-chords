@@ -1,7 +1,7 @@
 import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { validateSequence } from '../logic/persistence-utils';
-import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward, Repeat } from 'lucide-react';
 import ChordDiagram from './ChordDiagram';
 
 interface SequencerProps {
@@ -24,6 +24,10 @@ interface SequencerProps {
     displayMode: 'notes' | 'intervals';
     intervalMap: Record<string, string>;
     onPaste: (start: number, end: number, target: number) => void;
+    isRepeatMode: boolean;
+    repeatRange: { start: number, end: number } | null;
+    onToggleRepeatMode: () => void;
+    onSetRepeatRange: (range: { start: number, end: number } | null) => void;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({
@@ -45,13 +49,21 @@ const Sequencer: React.FC<SequencerProps> = ({
     onLoad,
     displayMode,
     intervalMap,
-    onPaste
+    onPaste,
+    isRepeatMode,
+    repeatRange,
+    onToggleRepeatMode,
+    onSetRepeatRange
 }) => {
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
     const [copyMode, setCopyMode] = React.useState<'idle' | 'start' | 'end' | 'target'>('idle');
     const [copyStart, setCopyStart] = React.useState<number | null>(null);
     const [copyEnd, setCopyEnd] = React.useState<number | null>(null);
+
+    // Repeat Selection State
+    const [repeatSelStart, setRepeatSelStart] = React.useState<number | null>(null);
+    const [repeatSelMode, setRepeatSelMode] = React.useState<'idle' | 'start' | 'end'>('idle');
 
     // Sync local state when prop changes (e.g. if set externally)
     React.useEffect(() => {
@@ -100,6 +112,7 @@ const Sequencer: React.FC<SequencerProps> = ({
     };
 
     const handleCopyClick = () => {
+        // If entering copy mode, ensure practice selection is cleared
         if (copyMode === 'idle') {
             if (isPlaying && !isPaused) {
                 onPause();
@@ -107,6 +120,7 @@ const Sequencer: React.FC<SequencerProps> = ({
             setCopyMode('start');
             setCopyStart(null);
             setCopyEnd(null);
+            setRepeatSelMode('idle'); // Clear repeat selection if active
         } else {
             setCopyMode('idle');
             setCopyStart(null);
@@ -114,32 +128,79 @@ const Sequencer: React.FC<SequencerProps> = ({
         }
     };
 
-    const handleSlotInteraction = (index: number) => {
-        if (copyMode === 'idle') {
-            onSlotClick(index);
-        } else if (copyMode === 'start') {
-            setCopyStart(index);
-            setCopyMode('end');
-        } else if (copyMode === 'end') {
-            // Ensure end is after start, swap if needed
-            let start = copyStart!;
-            let end = index;
-            if (end < start) {
-                const temp = start;
-                start = end;
-                end = temp;
+    const handleRepeatToggle = () => {
+        if (!isRepeatMode) {
+            // Enabling repeat mode
+            onToggleRepeatMode();
+            // If no range set, start selection
+            if (!repeatRange) {
+                setRepeatSelMode('start');
+                setRepeatSelStart(null);
             }
-            setCopyStart(start);
-            setCopyEnd(end);
-            setCopyMode('target');
-        } else if (copyMode === 'target') {
-            if (copyStart !== null && copyEnd !== null) {
-                onPaste(copyStart, copyEnd, index);
-                setCopyMode('idle');
-                setCopyStart(null);
-                setCopyEnd(null);
-            }
+        } else {
+            // Cancel Repeat: Exit mode and clear state
+            onToggleRepeatMode();
+            setRepeatSelMode('idle');
+            setRepeatSelStart(null);
+            onSetRepeatRange(null); // Explicitly clear the range
+            onStop(); // Stop playback immediately
         }
+    };
+
+    const handleSlotInteraction = (index: number) => {
+        // Priority: Copy selection -> Repeat selection -> Normal interaction
+        if (copyMode !== 'idle') {
+            if (copyMode === 'start') {
+                setCopyStart(index);
+                setCopyMode('end');
+            } else if (copyMode === 'end') {
+                // Ensure end is after start, swap if needed
+                let start = copyStart!;
+                let end = index;
+                if (end < start) {
+                    const temp = start;
+                    start = end;
+                    end = temp;
+                }
+                setCopyStart(start);
+                setCopyEnd(end);
+                setCopyMode('target');
+            } else if (copyMode === 'target') {
+                if (copyStart !== null && copyEnd !== null) {
+                    onPaste(copyStart, copyEnd, index);
+                    setCopyMode('idle');
+                    setCopyStart(null);
+                    setCopyEnd(null);
+                }
+            }
+            return;
+        }
+
+        if (repeatSelMode !== 'idle') {
+            if (repeatSelMode === 'start') {
+                setRepeatSelStart(index);
+                setRepeatSelMode('end');
+            } else if (repeatSelMode === 'end') {
+                let start = repeatSelStart!;
+                let end = index;
+                if (end < start) {
+                    const temp = start;
+                    start = end;
+                    end = temp;
+                }
+                onSetRepeatRange({ start, end });
+                setRepeatSelMode('idle');
+                setRepeatSelStart(null);
+                // Auto-play on range select confirmation
+                if (!isPlaying) {
+                    onPlay();
+                }
+            }
+            return;
+        }
+
+        // Normal interaction
+        onSlotClick(index);
     };
 
 
@@ -215,10 +276,20 @@ const Sequencer: React.FC<SequencerProps> = ({
                     {/* Copy Button */}
                     <button
                         onClick={handleCopyClick}
-                        className={`control-btn ref-copy-btn ${copyMode !== 'idle' ? 'btn-active-action' : 'btn-clear'}`}
+                        className={`control-btn ref-copy-btn ${copyMode !== 'idle' ? 'btn-stop' : 'btn-clear'}`}
                         title="Copy Range"
                     >
                         <span style={{ fontWeight: 600 }}>{copyMode === 'idle' ? 'Copy' : 'Cancel Copy'}</span>
+                    </button>
+
+                    {/* Repeat Mode Button */}
+                    <button
+                        onClick={handleRepeatToggle}
+                        className={`control-btn ${isRepeatMode ? 'btn-stop' : 'btn-clear'}`}
+                        title={isRepeatMode ? "Cancel Repeat Loop" : "Enable Repeat Loop"}
+                    >
+                        <Repeat size={18} />
+                        <span style={{ fontWeight: 600, marginLeft: '0.25rem' }}>{isRepeatMode ? 'Cancel Repeat' : 'Repeat'}</span>
                     </button>
 
                     <button
@@ -254,10 +325,17 @@ const Sequencer: React.FC<SequencerProps> = ({
                 </div>
 
                 {copyMode !== 'idle' && (
-                    <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>
-                        {copyMode === 'start' && "Select Start Beat"}
-                        {copyMode === 'end' && "Select End Beat"}
+                    <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--secondary-color)', fontWeight: 'bold', fontStyle: 'italic' }}>
+                        {copyMode === 'start' && "Select Start Beat for Copy"}
+                        {copyMode === 'end' && "Select End Beat for Copy"}
                         {copyMode === 'target' && "Select Target Beat to Paste"}
+                    </div>
+                )}
+
+                {repeatSelMode !== 'idle' && (
+                    <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--secondary-color)', fontWeight: 'bold', fontStyle: 'italic' }}>
+                        {repeatSelMode === 'start' && "Select Start Beat for Repeat Loop"}
+                        {repeatSelMode === 'end' && "Select End Beat for Repeat Loop"}
                     </div>
                 )}
 
@@ -326,6 +404,8 @@ const Sequencer: React.FC<SequencerProps> = ({
 
                                         // Selection highlighting logic
                                         let isHighlighted = false;
+                                        let isPracticeHighlighted = false;
+
                                         if (copyMode === 'end' && copyStart !== null) {
                                             if (globalIdx === copyStart) isHighlighted = true;
                                         }
@@ -333,13 +413,29 @@ const Sequencer: React.FC<SequencerProps> = ({
                                             if (globalIdx >= copyStart && globalIdx <= copyEnd) isHighlighted = true;
                                         }
 
+                                        // Repeat Selection Highlighting
+                                        if (repeatSelMode === 'end' && repeatSelStart !== null) {
+                                            if (globalIdx === repeatSelStart) isPracticeHighlighted = true;
+                                        }
+
+                                        // Active Repeat Range Highlighting (if not selecting)
+                                        if (isRepeatMode && repeatRange && repeatSelMode === 'idle') {
+                                            if (globalIdx >= repeatRange.start && globalIdx <= repeatRange.end) {
+                                                isPracticeHighlighted = true;
+                                            }
+                                        }
+
+
                                         return (
                                             <div
                                                 key={globalIdx}
                                                 id={`beat-slot-${globalIdx}`}
                                                 onClick={() => handleSlotInteraction(globalIdx)}
-                                                className={`beat-slot ${isActive ? 'active' : ''} ${voicing ? 'occupied' : ''} ${isHighlighted ? 'highlight-select' : ''}`}
-                                                style={isHighlighted ? { borderColor: 'var(--primary-color)', backgroundColor: 'rgba(124, 58, 237, 0.1)' } : {}}
+                                                className={`beat-slot ${isActive ? 'active' : ''} ${voicing ? 'occupied' : ''} ${isHighlighted ? 'highlight-select' : ''} ${isPracticeHighlighted ? 'highlight-practice' : ''}`}
+                                                style={{
+                                                    ...(isHighlighted ? { borderColor: 'var(--primary-color)', backgroundColor: 'rgba(124, 58, 237, 0.1)' } : {}),
+                                                    ...(isPracticeHighlighted ? { borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: '2px' } : {})
+                                                }}
                                             >
                                                 <div className="beat-slot-content">
                                                     {isActive && (

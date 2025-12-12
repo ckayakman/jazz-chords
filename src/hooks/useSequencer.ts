@@ -7,9 +7,11 @@ interface UseSequencerProps {
     bpm: number;
     isPlaying: boolean;
     isPaused: boolean;
+    isRepeatMode: boolean;
+    repeatRange: { start: number, end: number } | null;
 }
 
-export function useSequencer({ sequence, bpm, isPlaying, isPaused }: UseSequencerProps) {
+export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange }: UseSequencerProps) {
     const [currentBeat, setCurrentBeat] = useState<number>(-1);
     const nextNoteTimeRef = useRef<number>(0);
     const currentStepRef = useRef<number>(0);
@@ -47,10 +49,26 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused }: UseSequence
                     // Resuming or Starting
                     if (currentBeat === -1) {
                         nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
-                        currentStepRef.current = 0;
+                        // If starting fresh in repeat mode, start at repeat start
+                        if (isRepeatMode && repeatRange) {
+                            currentStepRef.current = repeatRange.start;
+                        } else {
+                            currentStepRef.current = 0;
+                        }
                     } else {
                         // Resuming
                         nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
+                        // If resuming and we are out of bounds in repeat mode, jump to start
+                        if (isRepeatMode && repeatRange) {
+                            if (currentBeat < repeatRange.start || currentBeat > repeatRange.end) {
+                                currentStepRef.current = repeatRange.start;
+                            } else {
+                                // Resume from current, logic in nextNote will handle wrapping
+                                currentStepRef.current = currentBeat;
+                            }
+                        } else {
+                            currentStepRef.current = currentBeat;
+                        }
                     }
                     timerIDRef.current = window.setInterval(() => scheduler(), lookahead);
                 }
@@ -91,22 +109,36 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused }: UseSequence
             if (voicing) lastPopulatedIndex = idx;
         });
 
-        // Default to 32 if empty, otherwise loop up to the end of the last populated measure
-        // (Wait, previously 32? The code view said "Default to 16" in comment but logic was hardcoded 32?)
-        // Let's stick to the visible code styles.
-        // Actually, let's allow 40 measures * 4 = 160 if needed, but the loop logic should match existing behavior or requested behavior.
-        // The user previously wanted "Continually repeat only that one measure".
-        // The existing code has "Default to 16... loopSteps = 32" which contradicts the comment.
-        // I'll keep the logic consistent with what I saw: 
-        // "loopSteps = (maxMeasureIndex + 1) * 4"
+        // Determine loop bounds
+        let loopStart = 0;
+        let loopEnd = 32;
 
-        let loopSteps = 32;
-        if (lastPopulatedIndex !== -1) {
-            const maxMeasureIndex = Math.floor(lastPopulatedIndex / 4);
-            loopSteps = (maxMeasureIndex + 1) * 4;
+        if (isRepeatMode && repeatRange) {
+            loopStart = repeatRange.start;
+            loopEnd = repeatRange.end + 1; // End is exclusive for modulo logic usually, but here we want to loop back to start AFTER end
+        } else {
+            if (lastPopulatedIndex !== -1) {
+                const maxMeasureIndex = Math.floor(lastPopulatedIndex / 4);
+                loopEnd = (maxMeasureIndex + 1) * 4;
+            }
         }
 
-        currentStepRef.current = (currentStepRef.current + 1) % loopSteps;
+        let nextStep = currentStepRef.current + 1;
+
+        // Loop logic
+        if (isRepeatMode && repeatRange) {
+            // If we are outside the range or at the end, jump to start
+            if (nextStep >= loopEnd || nextStep < loopStart) {
+                nextStep = loopStart;
+            }
+        } else {
+            // Normal behavior: loop back to 0 at the end of the calculated sequence
+            if (nextStep >= loopEnd) {
+                nextStep = 0;
+            }
+        }
+
+        currentStepRef.current = nextStep;
     };
 
     const scheduleNote = (beatNumber: number, time: number) => {
@@ -123,6 +155,8 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused }: UseSequence
     };
 
     const stepTo = (step: number) => {
+        // Allow stepTo to override bounds if manual, but generally respected? 
+        // Actually stepTo is used for manual navigation.
         const safeStep = Math.max(0, Math.min(step, 159));
         currentStepRef.current = safeStep;
         setCurrentBeat(safeStep);

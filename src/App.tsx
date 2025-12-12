@@ -28,11 +28,13 @@ function App() {
     const [activeSlot, setActiveSlot] = useState<number | null>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [isPaused, setIsPaused] = useState(false)
+    const [isRepeatMode, setIsRepeatMode] = useState(false)
+    const [repeatRange, setRepeatRange] = useState<{ start: number, end: number } | null>(null)
 
     const [bpm, setBpm] = useState(90)
     const [hasInteracted, setHasInteracted] = useState(false)
 
-    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused })
+    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange })
 
     // Sync active slot when paused to allow editing
     useEffect(() => {
@@ -318,6 +320,15 @@ function App() {
         return activeFilters.includes('all') || activeFilters.includes(sectionId)
     }
 
+    const handleToggleRepeat = () => {
+        const nextState = !isRepeatMode;
+        setIsRepeatMode(nextState);
+        // If turning OFF, clear the range
+        if (!nextState) {
+            setRepeatRange(null);
+        }
+    }
+
     return (
         <div className="app-container">
             <header>
@@ -408,6 +419,10 @@ function App() {
                 displayMode={displayMode}
                 intervalMap={intervalMap}
                 onPaste={handlePaste}
+                isRepeatMode={isRepeatMode}
+                repeatRange={repeatRange}
+                onToggleRepeatMode={handleToggleRepeat}
+                onSetRepeatRange={setRepeatRange}
             />
 
             <main>
