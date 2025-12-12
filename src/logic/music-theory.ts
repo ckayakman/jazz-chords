@@ -86,7 +86,7 @@ export function parseChord(name: string): ChordComponents | null {
     let quality = "Unknown";
 
     // Basic qualities
-    if (rest === "" || rest === "maj" || rest === "M") {
+    if (rest === "" || rest === "maj" || rest === "M" || rest === "Maj") {
         quality = "Major";
         intervals = ["1P", "3M", "5P"];
     } else if (rest === "m" || rest === "min" || rest === "-") {
@@ -98,19 +98,23 @@ export function parseChord(name: string): ChordComponents | null {
     } else if (rest === "maj7" || rest === "M7" || rest === "Maj7") {
         quality = "Major 7";
         intervals = ["1P", "3M", "5P", "7M"];
-    } else if (rest === "maj7#4" || rest === "M7#4" || rest === "maj7(#4)" || rest === "M7(#4)") {
+    } else if (rest === "maj7#4" || rest === "M7#4" || rest === "maj7(#4)" || rest === "M7(#4)" || rest === "Maj7#4" || rest === "Maj7(#4)") {
         quality = "Major 7 #4";
         intervals = ["1P", "3M", "4A", "7M"];
     } else if (rest === "m7" || rest === "min7" || rest === "-7") {
         quality = "Minor 7";
         intervals = ["1P", "3m", "5P", "7m"];
-    } else if (rest === "m7b5" || rest === "m7(b5)" || rest === "min7(b5)" || rest === "min7(5b)" || rest === "ø" || rest === "ø7") {
+    } else if (
+        rest === "m7b5" || rest === "min7b5" || rest === "-7b5" ||
+        rest === "m7(b5)" || rest === "min7(b5)" || rest === "-7(b5)" ||
+        rest === "min7(5b)" || rest === "ø" || rest === "ø7"
+    ) {
         quality = "Half Diminished";
         intervals = ["1P", "3m", "5d", "7m"];
     } else if (rest === "dim" || rest === "dim7" || rest === "o" || rest === "o7") {
         quality = "Diminished 7";
         intervals = ["1P", "3m", "5d", "6M"]; // 6M is enharmonically bb7
-    } else if (rest === "6" || rest === "maj6" || rest === "M6") {
+    } else if (rest === "6" || rest === "maj6" || rest === "M6" || rest === "Maj6") {
         quality = "Major 6";
         intervals = ["1P", "3M", "5P", "6M"];
     } else if (rest === "m6" || rest === "min6" || rest === "-6") {
@@ -122,19 +126,26 @@ export function parseChord(name: string): ChordComponents | null {
     } else if (rest === "9" || rest === "dom9") {
         quality = "Dominant 9";
         intervals = ["1P", "3M", "5P", "7m", "9M"];
-    } else if (rest === "7b9" || rest === "7(b9)" || rest === "dom7(b9)") {
+    } else if (rest === "7b9" || rest === "dom7b9" || rest === "7(b9)" || rest === "dom7(b9)") {
         quality = "Dominant 7(b9)";
         intervals = ["1P", "3M", "5P", "7m", "9m"];
-    } else if (rest === "m7b9" || rest === "min7(b9)" || rest === "-7(b9)") {
+    } else if (
+        rest === "m7b9" || rest === "min7b9" || rest === "-7b9" ||
+        rest === "m7(b9)" || rest === "min7(b9)" || rest === "-7(b9)"
+    ) {
         quality = "Minor 7(b9)";
         intervals = ["1P", "3m", "5P", "7m", "9m"];
     } else if (rest === "m9" || rest === "min9" || rest === "-9") {
         quality = "Minor 9";
         intervals = ["1P", "3m", "5P", "7m", "9M"];
-    } else if (rest === "mmaj7" || rest === "minmaj7" || rest === "-maj7") {
+    } else if (
+        rest === "mmaj7" || rest === "mMaj7" || rest === "mM7" ||
+        rest === "minmaj7" || rest === "minMaj7" || rest === "minM7" ||
+        rest === "-maj7" || rest === "-Maj7" || rest === "-M7"
+    ) {
         quality = "Minor Major 7";
         intervals = ["1P", "3m", "5P", "7M"];
-    } else if (rest === "maj7#5" || rest === "maj7(#5)" || rest === "M7#5" || rest === "M7(#5)") {
+    } else if (rest === "maj7#5" || rest === "maj7(#5)" || rest === "M7#5" || rest === "M7(#5)" || rest === "Maj7#5" || rest === "Maj7(#5)") {
         quality = "Augmented Major 7";
         intervals = ["1P", "3M", "5A", "7M"];
     } else if (rest === "dom7#5" || rest === "dom7(#5)" || rest === "7#5" || rest === "7(#5)") {

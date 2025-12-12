@@ -359,27 +359,27 @@ function App() {
                         <div>
                             <h3 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Basic 7th Chords</h3>
                             <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7</span> (maj7, M7): 1, 3, 5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7</span> (maj7, Maj7, M7): 1, 3, 5, 7</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7</span> (7, dom7): 1, 3, 5, b7</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 7</span> (m7, min7, -7): 1, b3, 5, b7</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Half Diminished</span> (m7b5, ø): 1, b3, b5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Half Diminished</span> (m7b5, min7b5, -7b5, ø): 1, b3, b5, b7</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Diminished 7</span> (dim7, o7): 1, b3, b5, bb7</li>
                             </ul>
                         </div>
                         <div>
                             <h3 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Extended & Altered</h3>
                             <ul style={{ listStyleType: 'none', paddingLeft: 0 }}>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 9</span> (maj9): 1, 3, 5, 7, 9</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 9</span> (9): 1, 3, 5, b7, 9</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 9</span> (m9): 1, b3, 5, b7, 9</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7(b9)</span> (7b9): 1, 3, 5, b7, b9</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 7(b9)</span> (m7b9): 1, b3, 5, b7, b9</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7 #4</span> (maj7#4): 1, 3, #4, 7</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>6th Chords</span> (6, m6): 1, 3/b3, 5, 6</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor Major 7</span> (mmaj7): 1, b3, 5, 7</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Major 7</span> (maj7#5): 1, 3, #5, 7</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Dominant 7</span> (7#5): 1, 3, #5, b7</li>
-                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 #11</span> (7#11): 1, 3, 5, b7, #11</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 9</span> (maj9, Maj9, M9): 1, 3, 5, 7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 9</span> (9, dom9): 1, 3, 5, b7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 9</span> (m9, min9, -9): 1, b3, 5, b7, 9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7(b9)</span> (7b9, dom7b9): 1, 3, 5, b7, b9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor 7(b9)</span> (m7b9, min7b9, -7b9): 1, b3, 5, b7, b9</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 7 #4</span> (maj7#4, Maj7#4, M7#4): 1, 3, #4, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>6th Chords</span> (6, Maj6, M6 / m6, min6, -6): 1, 3/b3, 5, 6</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Minor Major 7</span> (mMaj7, minMaj7, -Maj7): 1, b3, 5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Major 7</span> (maj7#5, Maj7#5, M7#5): 1, 3, #5, 7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Dominant 7</span> (7#5, dom7#5): 1, 3, #5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 #11</span> (7#11, dom7#11): 1, 3, 5, b7, #11</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Altered Dominant</span> (alt, 7alt): 1, 3, b7 + (b5/#5, b9/#9)</li>
                             </ul>
