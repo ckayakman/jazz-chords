@@ -34,14 +34,14 @@ function isSameNote(n1: Note, n2: Note): boolean {
     return getNoteIndex(n1) === getNoteIndex(n2);
 }
 
-export type VoicingType = 'Drop2' | 'Drop3' | 'Shell' | 'FreddieGreen';
+export type VoicingType = 'Drop2' | 'Drop3' | 'Drop2_4' | 'Shell' | 'FreddieGreen';
 
 export function generateVoicings(notes: Note[], type: VoicingType, stringSetOverride?: number[]): Voicing[] {
     // notes:
     // For Drop2/Drop3: [Root, 3rd, 5th, 7th] (4 notes)
     // For Shell/FreddieGreen: [Root, 3rd, 7th] (3 notes)
 
-    if (type === 'Drop2' || type === 'Drop3') {
+    if (type === 'Drop2' || type === 'Drop3' || type === 'Drop2_4') {
         if (notes.length !== 4) return [];
     } else {
         if (notes.length !== 3) return [];
@@ -78,7 +78,27 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
     // - Close Inv 2 -> Drop 3 -> 7th in Bass (3rd Inv)
     // Order: [3, 0, 1, 2]
 
-    const order = type === 'Drop2' ? [2, 3, 0, 1] : [3, 0, 1, 2];
+    // Drop 2 & 4:
+    // Drop the 2nd and 4th notes from the top (indices 1 & 3 of close position [0,1,2,3] -> wait, close is bottom up?)
+    // Standard def:
+    // Drop 2: 2nd from top of close voicing.
+    // Drop 3: 3rd from top of close voicing.
+    // Drop 2 & 4: 2nd and 4th from top of close voicing.
+    // My inversions are defined as [lowest, ..., highest] in pitch for close voicings?
+    // Let's verify: inversions[0] = [1, 3, 5, 7]. Top is 7 (index 3). 2nd from top is 5 (index 2). 4th from top is 1 (index 0).
+    // So Drop 2&4 means taking indices 2 and 0 and dropping them an octave.
+    // This leaves indices 1 and 3 in place.
+    // Bass note will be index 0 or index 2 (whichever ends up lower, likely index 0 dropped).
+
+    // Order for Drop 2&4:
+    // Ideally we want Root in Bass first.
+    // If we take inv[0] (1 3 5 7) -> Drop 5 and 1. Bass is 1. -> Root Position.
+    // If we take inv[1] (3 5 7 1) -> Drop 7 and 3. Bass is 3. -> 1st Inv.
+    // If we take inv[2] (5 7 1 3) -> Drop 1 and 5. Bass is 5. -> 2nd Inv.
+    // If we take inv[3] (7 1 3 5) -> Drop 3 and 7. Bass is 7. -> 3rd Inv.
+    // So the order [0, 1, 2, 3] maps to [Root, 1st, 2nd, 3rd] inversions naturally!
+
+    const order = type === 'Drop2' ? [2, 3, 0, 1] : type === 'Drop3' ? [3, 0, 1, 2] : [0, 1, 2, 3];
     const names = ["Root Position", "1st Inversion", "2nd Inversion", "3rd Inversion"];
 
     // Helper to generate and check voicings
@@ -104,7 +124,10 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
             const maxFret = Math.max(...frets);
 
             // Span check: usually 4 or 5 frets.
-            if (maxFret - minFret <= 4) {
+            // Drop 2 & 4 are wider, allow up to 6?
+            const limit = (type === 'Drop2_4') ? 6 : 4;
+
+            if (maxFret - minFret <= limit) {
                 voicings.push({
                     name: name,
                     positions: combo
@@ -121,9 +144,30 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
         if (type === 'Drop2') {
             targetNotes = [inv[2], inv[0], inv[1], inv[3]];
             stringSet = stringSetOverride || [2, 3, 4, 5];
-        } else {
+        } else if (type === 'Drop3') {
             targetNotes = [inv[1], inv[0], inv[2], inv[3]];
             stringSet = stringSetOverride || [0, 2, 3, 4];
+        } else {
+            // Drop 2 & 4
+            // Original Close: [0, 1, 2, 3] (Low to High)
+            // Drop 2 (index 2) and 4 (index 0).
+            // Bottom up order: Index 0 (Dropped), Index 2 (Dropped), Index 1, Index 3.
+            // Wait, dropping usually means lowering octave.
+            // If we drop index 0 (Root in inv 0) it goes WAY down? No, it's already at bottom of close.
+            // Let's re-read standard theory.
+            // "Drop 2 and 4" comes from 5-part harmony block chords usually, but for guitar:
+            // "Drop the second and fourth voices from the top of the chord down an octave."
+            // Close: 1 3 5 7 (Root Pos). Top=7. 2nd=5. 3rd=3. 4th=1.
+            // Drop 5 and 1.
+            // New vertical order (low to high): 1 (dropped), 5 (dropped), 3, 7.
+            // Intervals: 1, 5, 3, 7. (Open voicing).
+            // Let's check string sets. E A D G B E.
+            // 1(LowE), 5(A), 3(D), 7(G) -> Valid?
+            // Or 1(A), 5(D), 3(G), 7(B) -> Valid.
+            // So order of voices in `targetNotes` should be lowest string to highest string.
+            // [inv[0], inv[2], inv[1], inv[3]]
+            targetNotes = [inv[0], inv[2], inv[1], inv[3]];
+            stringSet = stringSetOverride || [0, 1, 2, 3]; // Default low set
         }
 
         tryVoicing(targetNotes, names[i], stringSet);

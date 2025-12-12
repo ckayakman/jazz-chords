@@ -19,21 +19,26 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
     const maxFret = frets.length > 0 ? Math.max(...frets) : 5;
 
 
-    // Display a window of 5 frets.
+    // Display a window of at least 5 frets, or more if the span requires it.
+    const span = positions.length > 0 ? (maxFret - minFret + 1) : 5;
+    const windowSize = Math.max(5, span);
+
     // We prefer starting at minFret - 1 for aesthetics (padding at top).
     // But we must ensure maxFret is included.
     let startFret = Math.max(1, minFret - 1);
-    const windowSize = 5;
+
+    // Adjust startFret if window would clip maxFret (shouldn't happen with dynamic window, but good safety)
     if (startFret + windowSize - 1 < maxFret) {
         startFret = maxFret - windowSize + 1;
     }
     const endFret = startFret + windowSize - 1;
 
-    const width = 200;
-    const height = 240;
     const padding = 30;
+    const baseFretSpacing = 36; // Derived from original (240 - 60) / 5 = 36
+    const fretSpacing = baseFretSpacing;
+    const height = padding * 2 + (fretSpacing * windowSize);
+    const width = 200;
     const stringSpacing = (width - 2 * padding) / 5;
-    const fretSpacing = (height - 2 * padding) / 5;
 
     return (
         <div
@@ -47,7 +52,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ voicing, displayMode = 'not
                 <rect x={padding} y={padding} width={width - 2 * padding} height={height - 2 * padding} fill="#2a2a2a" />
 
                 {/* Frets (Horizontal lines) */}
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: windowSize + 1 }).map((_, i) => (
                     <line
                         key={`fret-${i}`}
                         x1={padding}

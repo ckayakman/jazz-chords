@@ -14,6 +14,8 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ selectedFilters, onFilt
         { id: 'drop2-top', label: 'Drop 2 Top' },
         { id: 'drop2-mid', label: 'Drop 2 Middle' },
         { id: 'drop2-bot', label: 'Drop 2 Bottom' },
+        { id: 'drop2-4-low', label: 'Drop 2 & 4 Low' },
+        { id: 'drop2-4-high', label: 'Drop 2 & 4 High' },
         { id: 'drop3-top', label: 'Drop 3 Top' },
         { id: 'drop3-bot', label: 'Drop 3 Bottom' },
         { id: 'shell', label: 'Shell' },

@@ -13,6 +13,8 @@ function App() {
     const [drop2TopVoicings, setDrop2TopVoicings] = useState<Voicing[]>([])
     const [drop2MiddleVoicings, setDrop2MiddleVoicings] = useState<Voicing[]>([])
     const [drop2BottomVoicings, setDrop2BottomVoicings] = useState<Voicing[]>([])
+    const [drop2_4LowVoicings, setDrop2_4LowVoicings] = useState<Voicing[]>([])
+    const [drop2_4HighVoicings, setDrop2_4HighVoicings] = useState<Voicing[]>([])
     const [drop3LowVoicings, setDrop3LowVoicings] = useState<Voicing[]>([])
 
     const [drop3HighVoicings, setDrop3HighVoicings] = useState<Voicing[]>([])
@@ -86,6 +88,8 @@ function App() {
             setDrop2TopVoicings([])
             setDrop2MiddleVoicings([])
             setDrop2BottomVoicings([])
+            setDrop2_4LowVoicings([])
+            setDrop2_4HighVoicings([])
             setDrop3LowVoicings([])
             setDrop3HighVoicings([])
 
@@ -101,6 +105,8 @@ function App() {
         let d2Top: Voicing[] = []
         let d2Mid: Voicing[] = []
         let d2Bot: Voicing[] = []
+        let d2_4Low: Voicing[] = []
+        let d2_4High: Voicing[] = []
         let d3Low: Voicing[] = []
         let d3High: Voicing[] = []
         let shell: Voicing[] = []
@@ -110,6 +116,16 @@ function App() {
             d2Top = generateVoicings(notes, 'Drop2', [2, 3, 4, 5])
             d2Mid = generateVoicings(notes, 'Drop2', [1, 2, 3, 4])
             d2Bot = generateVoicings(notes, 'Drop2', [0, 1, 2, 3])
+            d2_4Low = generateVoicings(notes, 'Drop2_4', [0, 1, 2, 3]) // E A D B (skip G) -> actually indices 0,1,2,4
+            // Wait, logic in generator uses consecutive indices. I need to be careful.
+            // My generator logic for Drop2_4 simply takes string set and uses them for 4 notes.
+            // String set [0, 1, 2, 4] means strings 0, 1, 2, 4.
+            // Let's pass correct sets.
+            // Low Set: E(0), A(1), D(2), B(4) -> [0, 1, 2, 4]
+            // High Set: A(1), D(2), G(3), E(5) -> [1, 2, 3, 5]
+            d2_4Low = generateVoicings(notes, 'Drop2_4', [0, 1, 2, 4])
+            d2_4High = generateVoicings(notes, 'Drop2_4', [1, 2, 3, 5])
+
             d3Low = generateVoicings(notes, 'Drop3', [0, 2, 3, 4])
             d3High = generateVoicings(notes, 'Drop3', [1, 3, 4, 5])
 
@@ -136,7 +152,7 @@ function App() {
             const expandedMap = getIntervalMap(parsed.root, allIntervals);
             setIntervalMap(expandedMap);
 
-            const genRootless = (v: { suffix: string, intervals: string[] }, type: 'Drop2' | 'Drop3', strings: number[]) => {
+            const genRootless = (v: { suffix: string, intervals: string[] }, type: 'Drop2' | 'Drop3' | 'Drop2_4', strings: number[]) => {
                 const vNotes = getNotesFromIntervals(parsed.root, v.intervals);
                 // Rootless: 3rd, 5th, 7th, 9th -> Indices 1, 2, 3, 4
                 // Note: getNotesFromIntervals returns [Root, 3, 5, 7, 9]
@@ -152,6 +168,8 @@ function App() {
                 d2Top.push(...genRootless(v, 'Drop2', [2, 3, 4, 5]));
                 d2Mid.push(...genRootless(v, 'Drop2', [1, 2, 3, 4]));
                 d2Bot.push(...genRootless(v, 'Drop2', [0, 1, 2, 3]));
+                d2_4Low.push(...genRootless(v, 'Drop2_4', [0, 1, 2, 4]));
+                d2_4High.push(...genRootless(v, 'Drop2_4', [1, 2, 3, 5]));
                 d3Low.push(...genRootless(v, 'Drop3', [0, 2, 3, 4]));
                 d3High.push(...genRootless(v, 'Drop3', [1, 3, 4, 5]));
                 d3High.push(...genRootless(v, 'Drop3', [1, 3, 4, 5]));
@@ -173,7 +191,7 @@ function App() {
             // Omit Root: 3rd, 5th, 7th, 9th (Indices 1, 2, 3, 4)
             const notesOmitRoot = [notes[1], notes[2], notes[3], notes[4]]
 
-            const genAndLabel = (n: string[], labelSuffix: string, type: 'Drop2' | 'Drop3', strings: number[]) => {
+            const genAndLabel = (n: string[], labelSuffix: string, type: 'Drop2' | 'Drop3' | 'Drop2_4', strings: number[]) => {
                 return generateVoicings(n, type, strings).map(v => ({
                     ...v,
                     name: `${v.name} ${labelSuffix}`
@@ -194,6 +212,16 @@ function App() {
             d2Bot = [
                 ...genAndLabel(notesOmit5, '(Omit 5)', 'Drop2', [0, 1, 2, 3]),
                 ...genAndLabel(notesOmitRoot, '(Omit Root)', 'Drop2', [0, 1, 2, 3])
+            ]
+            // Drop 2 & 4 Low
+            d2_4Low = [
+                ...genAndLabel(notesOmit5, '(Omit 5)', 'Drop2_4', [0, 1, 2, 4]),
+                ...genAndLabel(notesOmitRoot, '(Omit Root)', 'Drop2_4', [0, 1, 2, 4])
+            ]
+            // Drop 2 & 4 High
+            d2_4High = [
+                ...genAndLabel(notesOmit5, '(Omit 5)', 'Drop2_4', [1, 2, 3, 5]),
+                ...genAndLabel(notesOmitRoot, '(Omit Root)', 'Drop2_4', [1, 2, 3, 5])
             ]
             // Drop 3 Low
             d3Low = [
@@ -229,6 +257,8 @@ function App() {
         setDrop2TopVoicings(d2Top)
         setDrop2MiddleVoicings(d2Mid)
         setDrop2BottomVoicings(d2Bot)
+        setDrop2_4LowVoicings(d2_4Low)
+        setDrop2_4HighVoicings(d2_4High)
         setDrop3LowVoicings(d3Low)
         setDrop3HighVoicings(d3High)
         setShellVoicings(shell)
@@ -467,6 +497,40 @@ function App() {
                             {drop2BottomVoicings.map((v, i) => (
                                 <ChordDiagram
                                     key={`d2b-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {drop2_4LowVoicings.length > 0 && shouldShowSection('drop2-4-low') && (
+                    <section className="voicing-section">
+                        <h2>Drop 2 & 4 Voicings - Low Strings (6,5,4,2)</h2>
+                        <div className="diagram-grid">
+                            {drop2_4LowVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`d24l-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {drop2_4HighVoicings.length > 0 && shouldShowSection('drop2-4-high') && (
+                    <section className="voicing-section">
+                        <h2>Drop 2 & 4 Voicings - High Strings (5,4,3,1)</h2>
+                        <div className="diagram-grid">
+                            {drop2_4HighVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`d24h-${i}`}
                                     voicing={v}
                                     displayMode={displayMode}
                                     intervalMap={intervalMap}
