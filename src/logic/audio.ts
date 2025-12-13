@@ -70,3 +70,28 @@ export function playChord(positions: FretPosition[]) {
     // Play immediately (slightly in future to avoid clicks)
     playChordAt(positions, ctx.currentTime + 0.05);
 }
+
+export function playClickAt(time: number, isAccent: boolean) {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+        ctx.resume();
+    }
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = 'sine';
+    // High pitch for accent (Beat 1), lower for others
+    osc.frequency.setValueAtTime(isAccent ? 880 : 440, time);
+
+    // Short percussive envelope
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(0.5, time + 0.005);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start(time);
+    osc.stop(time + 0.1);
+}

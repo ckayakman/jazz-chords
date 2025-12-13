@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Voicing } from '../logic/voicing-generator';
-import { playChordAt, getAudioContext } from '../logic/audio';
+import { playChordAt, playClickAt, getAudioContext } from '../logic/audio';
 
 interface UseSequencerProps {
     sequence: (Voicing | null)[];
@@ -49,15 +49,13 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
                     // Resuming or Starting
                     if (currentBeat === -1) {
                         nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
-                        // If starting fresh in repeat mode, start at repeat start
-                        if (isRepeatMode && repeatRange) {
-                            currentStepRef.current = repeatRange.start;
-                        } else {
-                            currentStepRef.current = 0;
-                        }
+                        // Start with count-in (-4) unless resuming logic says otherwise (but currentBeat === -1 implies stopped)
+                        // If starting fresh in repeat mode? Still do count-in.
+                        currentStepRef.current = -4;
                     } else {
-                        // Resuming
+                        // Resuming from Pause
                         nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
+
                         // If resuming and we are out of bounds in repeat mode, jump to start
                         if (isRepeatMode && repeatRange) {
                             if (currentBeat < repeatRange.start || currentBeat > repeatRange.end) {
@@ -103,6 +101,17 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
         const secondsPerBeat = 60.0 / bpm;
         nextNoteTimeRef.current += secondsPerBeat;
 
+        // If in count-in, just increment
+        if (currentStepRef.current < 0) {
+            let next = currentStepRef.current + 1;
+            // If next is 0, we can check if we should jump to start of repeat range
+            if (next === 0 && isRepeatMode && repeatRange) {
+                next = repeatRange.start;
+            }
+            currentStepRef.current = next;
+            return;
+        }
+
         // Calculate dynamic loop length
         let lastPopulatedIndex = -1;
         sequenceRef.current.forEach((voicing, idx) => {
@@ -144,13 +153,27 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     const scheduleNote = (beatNumber: number, time: number) => {
         const delay = (time - audioCtxRef.current!.currentTime) * 1000;
         setTimeout(() => {
-            setCurrentBeat(beatNumber);
+            // Only update currentBeat if >= 0 to avoid highlighting weird slots negative
+            if (beatNumber >= 0) {
+                setCurrentBeat(beatNumber);
+            } else {
+                setCurrentBeat(-1); // Or keep -1
+            }
         }, Math.max(0, delay));
 
-        // Play audio using fresh sequence ref
-        const voicing = sequenceRef.current[beatNumber];
-        if (voicing) {
-            playChordAt(voicing.positions, time);
+        if (beatNumber < 0) {
+            // Count-in clicks
+            // beatNumber is -4, -3, -2, -1
+            // Accent on -4 (which represents the '1' of the pre-measure)
+            // Or -4, -3, -2, -1 corresponding to 1, 2, 3, 4 of count-in
+            const isAccent = (beatNumber === -4);
+            playClickAt(time, isAccent);
+        } else {
+            // Play audio using fresh sequence ref
+            const voicing = sequenceRef.current[beatNumber];
+            if (voicing) {
+                playChordAt(voicing.positions, time);
+            }
         }
     };
 
