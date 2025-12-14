@@ -2,7 +2,9 @@ import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { validateSequence } from '../logic/persistence-utils';
 import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward, Repeat } from 'lucide-react';
+
 import ChordDiagram from './ChordDiagram';
+import SaveModal from './SaveModal';
 
 interface SequencerProps {
     sequence: ((Voicing & { intervalMap?: Record<string, string> }) | null)[];
@@ -58,8 +60,12 @@ const Sequencer: React.FC<SequencerProps> = ({
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
     const [copyMode, setCopyMode] = React.useState<'idle' | 'start' | 'end' | 'target'>('idle');
+    const [showSaveModal, setShowSaveModal] = React.useState(false);
+    const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
     const [copyStart, setCopyStart] = React.useState<number | null>(null);
     const [copyEnd, setCopyEnd] = React.useState<number | null>(null);
+
+
 
     // Repeat Selection State
     const [repeatSelStart, setRepeatSelStart] = React.useState<number | null>(null);
@@ -91,24 +97,54 @@ const Sequencer: React.FC<SequencerProps> = ({
         onBpmChange(clamped);
     };
 
-    const handleSave = () => {
-        let filename = window.prompt('Enter filename for sequence:', 'sequence');
-        if (!filename) return; // User cancelled or empty
+    // Cleanup download URL when modal closes or sequence changes
+    React.useEffect(() => {
+        if (!showSaveModal && downloadUrl && downloadUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(downloadUrl);
+            setDownloadUrl(null);
+        } else if (!showSaveModal && downloadUrl) {
+            setDownloadUrl(null);
+        }
+    }, [showSaveModal, downloadUrl]);
 
-        if (!filename.endsWith('.json')) {
-            filename += '.json';
+    const handleSaveClick = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
 
         const dataStr = JSON.stringify(sequence);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+
+        try {
+            if ('showSaveFilePicker' in window) {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: 'sequence.json',
+                    types: [{
+                        description: 'JSON Sequence',
+                        accept: { 'application/json': ['.json'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(dataStr);
+                await writable.close();
+                return; // Saved successfully, skip modal
+            }
+        } catch (err: any) {
+            // User cancelled request or API failed
+            if (err.name === 'AbortError') {
+                return; // User cancelled, do nothing
+            }
+            console.warn('File System Access API not supported or failed, falling back to download:', err);
+            // check for SecurityError specifically if needed, but fallback is safe
+        }
+
+        // Fallback: Use SaveModal with File object API
+        // Using File constructor is cleaner than Blob for downloads, allows specifying name properties if needed
+        const file = new File([dataStr], 'sequence.json', { type: 'application/json' });
+        const url = URL.createObjectURL(file);
+        setDownloadUrl(url);
+
+        setShowSaveModal(true);
     };
 
     const handleCopyClick = () => {
@@ -304,7 +340,8 @@ const Sequencer: React.FC<SequencerProps> = ({
                     <div className="h-6 w-px bg-gray-700 mx-2"></div>
 
                     <button
-                        onClick={handleSave}
+                        type="button"
+                        onClick={handleSaveClick}
                         className="control-btn btn-clear"
                         title="Save Sequence"
                     >
@@ -323,6 +360,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                         onChange={handleLoad}
                         style={{ display: 'none' }}
                     />
+
                 </div>
 
                 {copyMode !== 'idle' && (
@@ -476,6 +514,13 @@ const Sequencer: React.FC<SequencerProps> = ({
                     </div>
                 )}
             </div>
+
+
+            <SaveModal
+                isOpen={showSaveModal}
+                onClose={() => setShowSaveModal(false)}
+                downloadUrl={downloadUrl}
+            />
         </details >
     );
 };
