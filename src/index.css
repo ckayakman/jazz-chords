@@ -495,3 +495,28 @@ h2 {
 .bpm-input:focus {
     border-color: var(--primary-color);
 }
+
+@media (max-width: 768px) {
+    .desktop-only-btn {
+        display: none !important;
+    }
+
+    .filter-dropdown {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        inset: auto !important;
+        margin: 0 !important;
+        width: 300px !important;
+        height: fit-content !important;
+        max-height: 80vh !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 1000 !important;
+        overflow-y: auto !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+        border: 2px solid var(--primary-color) !important;
+        background-color: var(--surface-color) !important;
+    }
+}

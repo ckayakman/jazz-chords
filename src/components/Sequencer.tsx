@@ -313,7 +313,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                     {/* Copy Button */}
                     <button
                         onClick={handleCopyClick}
-                        className={`control-btn ref-copy-btn ${copyMode !== 'idle' ? 'btn-stop' : 'btn-clear'}`}
+                        className={`control-btn ref-copy-btn desktop-only-btn ${copyMode !== 'idle' ? 'btn-stop' : 'btn-clear'}`}
                         title="Copy Range"
                     >
                         <span style={{ fontWeight: 600 }}>{copyMode === 'idle' ? 'Copy' : 'Cancel Copy'}</span>
@@ -322,7 +322,7 @@ const Sequencer: React.FC<SequencerProps> = ({
                     {/* Repeat Mode Button */}
                     <button
                         onClick={handleRepeatToggle}
-                        className={`control-btn ${isRepeatMode ? 'btn-stop' : 'btn-clear'}`}
+                        className={`control-btn desktop-only-btn ${isRepeatMode ? 'btn-stop' : 'btn-clear'}`}
                         title={isRepeatMode ? "Cancel Repeat Loop" : "Enable Repeat Loop"}
                     >
                         <Repeat size={18} />
@@ -342,14 +342,14 @@ const Sequencer: React.FC<SequencerProps> = ({
                     <button
                         type="button"
                         onClick={handleSaveClick}
-                        className="control-btn btn-clear"
+                        className="control-btn btn-clear desktop-only-btn"
                         title="Save Sequence"
                     >
                         <Download size={18} /> Save
                     </button>
                     <button
                         onClick={() => document.getElementById('hidden-file-input')?.click()}
-                        className="control-btn btn-clear"
+                        className="control-btn btn-clear desktop-only-btn"
                     >
                         <Upload size={18} /> Load
                     </button>
