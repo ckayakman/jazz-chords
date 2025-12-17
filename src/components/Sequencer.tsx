@@ -1,10 +1,13 @@
 import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { validateSequence } from '../logic/persistence-utils';
-import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward, Repeat } from 'lucide-react';
+import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward, Repeat, BookOpen } from 'lucide-react';
+import { generateProgressionSequence, ProgressionType } from '../logic/progression-generator';
+import { VoicingType } from '../logic/voicing-generator';
 
 import ChordDiagram from './ChordDiagram';
 import SaveModal from './SaveModal';
+import ProgressionModal from './ProgressionModal';
 
 interface SequencerProps {
     sequence: ((Voicing & { intervalMap?: Record<string, string> }) | null)[];
@@ -61,6 +64,7 @@ const Sequencer: React.FC<SequencerProps> = ({
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
     const [copyMode, setCopyMode] = React.useState<'idle' | 'start' | 'end' | 'target'>('idle');
     const [showSaveModal, setShowSaveModal] = React.useState(false);
+    const [showProgressionModal, setShowProgressionModal] = React.useState(false);
     const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
     const [copyStart, setCopyStart] = React.useState<number | null>(null);
     const [copyEnd, setCopyEnd] = React.useState<number | null>(null);
@@ -339,6 +343,16 @@ const Sequencer: React.FC<SequencerProps> = ({
 
                     <div className="h-6 w-px bg-gray-700 mx-2"></div>
 
+                    {/* Library Button */}
+                    <button
+                        onClick={() => setShowProgressionModal(true)}
+                        className="control-btn btn-clear desktop-only-btn"
+                        title="Load from Library"
+                    >
+                        <BookOpen size={18} /> Library
+                    </button>
+
+
                     <button
                         type="button"
                         onClick={handleSaveClick}
@@ -520,6 +534,19 @@ const Sequencer: React.FC<SequencerProps> = ({
                 isOpen={showSaveModal}
                 onClose={() => setShowSaveModal(false)}
                 downloadUrl={downloadUrl}
+            />
+
+            <ProgressionModal
+                isOpen={showProgressionModal}
+                onClose={() => setShowProgressionModal(false)}
+                onLoad={(progType, key, vType, strSet) => {
+                    const seq = generateProgressionSequence(progType, key, vType, strSet);
+                    if (seq.length > 0) {
+                        onLoad(seq);
+                    } else {
+                        alert('Could not generate voicings for this progression in this key/range. Try a different range or voicing type.');
+                    }
+                }}
             />
         </details >
     );
