@@ -137,21 +137,21 @@ const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, on
                                     >
                                         {selectedVoicingType === 'Drop2' && (
                                             <>
-                                                <option value="Top">Top (1-4)</option>
-                                                <option value="Middle">Middle (2-5)</option>
-                                                <option value="Bottom">Bottom (3-6)</option>
+                                                <option value="Top">Top (4,3,2,1)</option>
+                                                <option value="Middle">Middle (5,4,3,2)</option>
+                                                <option value="Bottom">Bottom (6,5,4,3)</option>
                                             </>
                                         )}
                                         {selectedVoicingType === 'Drop3' && (
                                             <>
-                                                <option value="Top">Top (Strings 5,3,2,1)</option>
-                                                <option value="Bottom">Bottom (Strings 6,4,3,2)</option>
+                                                <option value="Top">Top (5,3,2,1)</option>
+                                                <option value="Bottom">Bottom (6,4,3,2)</option>
                                             </>
                                         )}
                                         {selectedVoicingType === 'Drop2_4' && (
                                             <>
-                                                <option value="High">High (Strings 5,4,3,1)</option>
-                                                <option value="Low">Low (Strings 6,5,4,2)</option>
+                                                <option value="High">High (5,4,3,1)</option>
+                                                <option value="Low">Low (6,5,4,2)</option>
                                             </>
                                         )}
                                     </select>

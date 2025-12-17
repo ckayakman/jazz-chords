@@ -1,14 +1,18 @@
 import { Note, transpose, parseChord, getNotesFromIntervals, getIntervalMap } from './music-theory';
 import { generateVoicings, Voicing, VoicingType } from './voicing-generator';
 
-export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges';
+export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges' | 'MajorI_vi_ii_V' | 'Major_iii_vi_ii_V' | 'MinorTurnaround' | 'RhythmChangesBridge';
 
 export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
     'MajorII_V_I': 'Major ii-V-I',
     'MinorII_V_I': 'Minor ii-V-i',
     'MajorBlues': 'Major Blues (12-Bar)',
     'MinorBlues': 'Minor Blues (12-Bar)',
-    'RhythmChanges': 'Rhythm Changes (A Section)'
+    'RhythmChanges': 'Rhythm Changes (A Section)',
+    'MajorI_vi_ii_V': 'Major I-vi-ii-V',
+    'Major_iii_vi_ii_V': 'Major iii-vi-ii-V',
+    'MinorTurnaround': 'Minor Turnaround (i-bVI-ii-V)',
+    'RhythmChangesBridge': 'Rhythm Changes Bridge'
 };
 
 export const AVAILABLE_KEYS: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -26,7 +30,27 @@ const PROGRESSIONS: Record<ProgressionType, { degrees: number[], suffixes: strin
     },
     'MinorII_V_I': {
         degrees: [2, 7, 0, 0], // II(2), V(7), I(0) - but minor
-        suffixes: ['m7b5', '7alt', 'mMaj7', 'mMaj7'],
+        suffixes: ['m7b5', '7alt', 'm7', 'm7'],
+        measures: [1, 1, 1, 1]
+    },
+    'MajorI_vi_ii_V': {
+        degrees: [0, 9, 2, 7], // Root, vi(9), ii(2), V(7)
+        suffixes: ['maj7', 'm7', 'm7', '7'],
+        measures: [1, 1, 1, 1]
+    },
+    'Major_iii_vi_ii_V': {
+        degrees: [4, 9, 2, 7], // iii(4), vi(9), ii(2), V(7)
+        suffixes: ['m7', 'm7', 'm7', '7'],
+        measures: [1, 1, 1, 1]
+    },
+    'MinorTurnaround': {
+        degrees: [0, 8, 2, 7], // i(0), bVI(8), ii(2), V(7)
+        suffixes: ['m7', 'maj7', 'm7b5', '7alt'],
+        measures: [1, 1, 1, 1]
+    },
+    'RhythmChangesBridge': {
+        degrees: [4, 9, 2, 7], // III(4), VI(9), II(2), V(7) - Dominant 7ths for Bridge
+        suffixes: ['7', '7', '7', '7'],
         measures: [1, 1, 1, 1]
     },
     'MajorBlues': {
@@ -200,23 +224,10 @@ export function generateProgressionSequence(
         let candidates: Voicing[] = [];
 
         if (parsed.quality === 'Altered Dominant') {
-            // Hardcode a nice Alt voicing: 1, 3, b7, #9 (or b9)
-            // Let's use 7alt -> 1, 3, 7m, 9A (#9)
-            // Note: generateVoicings for Drop types needs 4 notes.
-            // Rootless for Drop 2: 3, 7, 9, 5?
-            // Let's stick to standard handling logic:
-            // "Altered Dominant" usually implies generatedVoicings returns nothing unless we give it notes.
-            // Let's construct a "7#9" explicitly for this generator.
-            // Intervals: 1P, 3M, 5P (omit), 7m, 9A.
-            // Let's use getNotesFromIntervals.
-
-            // Standard Jazz "Alt" works well with just 7(#9) or 7(b9).
-            // Let's pick 7(#9) as the default "Alt" sound for this feature.
-            const altIntervals = ['1P', '3M', '7m', '9A'];
+            // Hardcode a nice Alt voicing: 1, 3, b7, b9
+            // Changed from #9 to b9 to fit standard Drop 3 spans better and be more "inside"
+            const altIntervals = ['1P', '3M', '7m', '9m'];
             notes = getNotesFromIntervals(parsed.root, altIntervals);
-            // Rootless logic from App.tsx?
-            // If Drop 2, we need 4 notes. 1, 3, 7, #9 is 4 notes.
-            // generateVoicings checks length.
         } else {
             notes = getNotesFromIntervals(parsed.root, parsed.intervals);
         }
@@ -227,27 +238,24 @@ export function generateProgressionSequence(
 
         if (voicingType === 'Shell' || voicingType === 'FreddieGreen') {
             // Need R, 3, 7
-            // notes array might have 5 (1,3,5,7,9).
-            // Extract R, 3, 7.
-            // We know 1P is index 0.
-            // Find 3rd (3M or 3m). Find 7th (7M, 7m, 6M/bb7).
-            // Simply taking indices 0, 1, 3 usually works for standard 7th chords [1, 3, 5, 7].
-            // For m7b5 [1, b3, b5, b7] -> 0, 1, 3 works.
-            // For dim7 [1, b3, b5, bb7] -> 0, 1, 3 works.
-            if (notes.length >= 4) {
-                notes = [notes[0], notes[1], notes[3]];
+            if (parsed.quality === 'Altered Dominant') {
+                // Manual Alt keys: [1, 3, 7, 9]. We want [1, 3, 7].
+                // Indices: 0, 1, 2.
+                if (notes.length >= 3) {
+                    notes = [notes[0], notes[1], notes[2]];
+                }
+            } else {
+                // Standard 7ths: [1, 3, 5, 7]. We want [1, 3, 7].
+                // Indices: 0, 1, 3.
+                // m7b5: [1, b3, b5, b7]. Indices: 0, 1, 3.
+                if (notes.length >= 4) {
+                    notes = [notes[0], notes[1], notes[3]];
+                }
             }
         } else {
             // Drop voicings need 4 notes.
-            // If we have 3 (e.g. triad?), we fail. Our chords are 7ths, so 4 notes.
-            // If we have 5 (9ths), we usually omit root or 5th.
-            // Let's Drop 5th for standard 4-part jazz voicings.
-            // [1, 3, 5, 7] -> [1, 3, 7, 5] ?? No, omit 5 reduces to [1, 3, 7] which is 3 notes.
-            // Wait, Drop 2 is 4-part. We need 4 notes.
-            // [1, 3, 5, 7] -> Use all 4.
-            // [1, 3, 5, 7, 9] -> Omit 5 -> [1, 3, 7, 9].
             if (notes.length === 5) {
-                // Omit 5th (index 2)
+                // Omit 5th (index 2) for 9th chords
                 notes = [notes[0], notes[1], notes[3], notes[4]];
             }
         }
@@ -260,7 +268,7 @@ export function generateProgressionSequence(
     });
 
     // 2. Voice Leading Selection
-    let selectedVoicings: Voicing[] = [];
+    let selectedVoicings: (Voicing | null)[] = [];
 
     // Choose first chord: Closest to Fret 5 (average fret)
     const firstCandidates = allCandidates[0];
@@ -269,7 +277,7 @@ export function generateProgressionSequence(
         firstCandidates.sort((a, b) => Math.abs(getAverageFret(a) - 5) - Math.abs(getAverageFret(b) - 5));
         selectedVoicings.push(firstCandidates[0]);
     } else {
-        return []; // Failed to generate first chord
+        selectedVoicings.push(null); // Failed to generate first chord
     }
 
     // Choose subsequent chords
@@ -278,15 +286,18 @@ export function generateProgressionSequence(
         const currentCandidates = allCandidates[i];
 
         if (currentCandidates && currentCandidates.length > 0) {
-            // Sort by valid distance to prev
-            // Heuristic cleanup: Prefer same string range? (Guaranteed by stringSet input)
-            currentCandidates.sort((a, b) => getDistance(prev, a) - getDistance(prev, b));
-            selectedVoicings.push(currentCandidates[0]);
+            if (prev) {
+                // Sort by valid distance to prev
+                currentCandidates.sort((a, b) => getDistance(prev, a) - getDistance(prev, b));
+                selectedVoicings.push(currentCandidates[0]);
+            } else {
+                // No previous chord to guide leading, pick "center" (Fret 5)
+                currentCandidates.sort((a, b) => Math.abs(getAverageFret(a) - 5) - Math.abs(getAverageFret(b) - 5));
+                selectedVoicings.push(currentCandidates[0]);
+            }
         } else {
-            // Fallback? Should not happen.
-            // Push a placeholder or null?
-            // Let's just break or push null.
-            // console.warn("No voicing found for", chData[i].name);
+            console.warn("No voicing found for", chData[i].name);
+            selectedVoicings.push(null);
         }
     }
 
@@ -304,8 +315,10 @@ export function generateProgressionSequence(
         // Fill duration
         for (let b = 0; b < duration; b++) {
             if (slotIndex < MAX_SLOTS) {
-                // Clone voicing to avoid reference issues
-                finalSeq[slotIndex] = { ...v, name: chData[index].name };
+                if (v) {
+                    // Clone voicing to avoid reference issues
+                    finalSeq[slotIndex] = { ...v, name: chData[index].name };
+                }
                 slotIndex++;
             }
         }
