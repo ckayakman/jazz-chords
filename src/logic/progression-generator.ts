@@ -1,11 +1,11 @@
-import { Note, getNoteIndex, transpose, parseChord, getNotesFromIntervals, getIntervalMap } from './music-theory';
+import { Note, transpose, parseChord, getNotesFromIntervals, getIntervalMap } from './music-theory';
 import { generateVoicings, Voicing, VoicingType } from './voicing-generator';
 
 export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges';
 
 export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
-    'MajorII_V_I': 'Major II-V-I',
-    'MinorII_V_I': 'Minor II-V-I',
+    'MajorII_V_I': 'Major ii-V-I',
+    'MinorII_V_I': 'Minor ii-V-i',
     'MajorBlues': 'Major Blues (12-Bar)',
     'MinorBlues': 'Minor Blues (12-Bar)',
     'RhythmChanges': 'Rhythm Changes (A Section)'
@@ -13,11 +13,7 @@ export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
 
 export const AVAILABLE_KEYS: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
-interface ProgressionStep {
-    roman: string;
-    chordSuffix: string; // e.g., "m7", "7", "maj7"
-    duration: number; // Measures
-}
+
 
 // Simple map of progressions relative to a Major Key Root
 // Note: For Minor keys, we will treat the input key as the minor root, but we need to handle the relative intervals carefully.
@@ -95,9 +91,19 @@ const PROGRESSIONS: Record<ProgressionType, { degrees: number[], suffixes: strin
 
         // For this V1, let's stick to 1 chord per bar for the Blues/II-V-I.
         // I will comment out Rhythm Changes for now to avoid complexity spike.
-        degrees: [],
-        suffixes: [],
-        measures: []
+        degrees: [
+            0, 9, 2, 7, // Bar 1-2: I vi ii V
+            0, 9, 2, 7, // Bar 3-4: I vi ii V
+            0, 0, 5, 6, // Bar 5-6: I I7 IV #IVdim
+            0, 7, 0, 7  // Bar 7-8: I V I V
+        ],
+        suffixes: [
+            'maj7', 'm7', 'm7', '7',
+            'maj7', 'm7', 'm7', '7',
+            'maj7', '7', 'maj7', 'dim7',
+            'maj7', '7', 'maj7', '7'
+        ],
+        measures: Array(16).fill(0.5) // 0.5 measures * 4 beats/measure = 2 beats each
     }
 };
 
@@ -109,7 +115,7 @@ interface GeneratedChord {
 
 function getChordsForProgression(type: ProgressionType, keyRoot: Note): GeneratedChord[] {
     // Exclude RhythmChanges for now
-    if (type === 'RhythmChanges') return [];
+
 
     const prog = PROGRESSIONS[type];
     const chords: GeneratedChord[] = [];
@@ -177,7 +183,7 @@ export function generateProgressionSequence(
     const chData = getChordsForProgression(type, keyRoot);
     if (chData.length === 0) return [];
 
-    const sequence: (Voicing & { intervalMap?: Record<string, string> } | null)[] = [];
+
 
     // 1. Generate all candidates for each chord
     const allCandidates: Voicing[][] = chData.map(ch => {

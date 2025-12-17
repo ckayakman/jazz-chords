@@ -2,8 +2,8 @@ import React from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { validateSequence } from '../logic/persistence-utils';
 import { Play, Square, Trash2, X, Download, Upload, Pause, SkipBack, SkipForward, Repeat, BookOpen } from 'lucide-react';
-import { generateProgressionSequence, ProgressionType } from '../logic/progression-generator';
-import { VoicingType } from '../logic/voicing-generator';
+import { generateProgressionSequence } from '../logic/progression-generator';
+
 
 import ChordDiagram from './ChordDiagram';
 import SaveModal from './SaveModal';
@@ -353,27 +353,31 @@ const Sequencer: React.FC<SequencerProps> = ({
                     </button>
 
 
-                    <button
-                        type="button"
-                        onClick={handleSaveClick}
-                        className="control-btn btn-clear desktop-only-btn"
-                        title="Save Sequence"
-                    >
-                        <Download size={18} /> Save
-                    </button>
-                    <button
-                        onClick={() => document.getElementById('hidden-file-input')?.click()}
-                        className="control-btn btn-clear desktop-only-btn"
-                    >
-                        <Upload size={18} /> Load
-                    </button>
-                    <input
-                        id="hidden-file-input"
-                        type="file"
-                        accept=".json"
-                        onChange={handleLoad}
-                        style={{ display: 'none' }}
-                    />
+                    {!isPlaying && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleSaveClick}
+                                className="control-btn btn-clear desktop-only-btn"
+                                title="Save Sequence"
+                            >
+                                <Download size={18} /> Save
+                            </button>
+                            <button
+                                onClick={() => document.getElementById('hidden-file-input')?.click()}
+                                className="control-btn btn-clear desktop-only-btn"
+                            >
+                                <Upload size={18} /> Load
+                            </button>
+                            <input
+                                id="hidden-file-input"
+                                type="file"
+                                accept=".json"
+                                onChange={handleLoad}
+                                style={{ display: 'none' }}
+                            />
+                        </>
+                    )}
 
                 </div>
 

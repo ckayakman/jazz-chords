@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Music, Check } from 'lucide-react';
+import { Music, Check } from 'lucide-react';
 import { AVAILABLE_KEYS, PROGRESSION_LABELS, ProgressionType } from '../logic/progression-generator';
 import { VoicingType } from '../logic/voicing-generator';
 
@@ -24,11 +24,13 @@ const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, on
             if (set === 'Middle') return [1, 2, 3, 4];
             if (set === 'Bottom') return [0, 1, 2, 3];
         } else if (vType === 'Drop3') {
-            if (set === 'Top') return [1, 3, 4, 5]; // "Top" for drop 3 usually means root on A string
+            if (set === 'Top') return [1, 3, 4, 5];
             if (set === 'Bottom') return [0, 2, 3, 4];
+            return [1, 3, 4, 5]; // Default to Top
         } else if (vType === 'Drop2_4') {
             if (set === 'Low') return [0, 1, 2, 4];
             if (set === 'High') return [1, 2, 3, 5];
+            return [0, 1, 2, 4]; // Default to Low
         } else {
             // Shell / Freddie Green
             // Usually determined by generator, but let's give hints?
