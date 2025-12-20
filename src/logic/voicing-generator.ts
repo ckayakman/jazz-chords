@@ -172,6 +172,8 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
         }
 
         const combinations = cartesian(possiblePositions);
+        const validCombinations: FretPosition[][] = [];
+
         combinations.forEach(combo => {
             const frets = combo.map(p => p.fret);
             // Since we excluded 0, we can just take max - min
@@ -186,16 +188,33 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
             const limit = (type === 'Drop2_4') ? 5 : 4;
 
             if (span <= limit) {
-                // Check if already exists
-                const signature = combo.map(p => `${p.string}-${p.fret}`).join('|');
-                if (!voicings.some(v => v.positions.map(p => `${p.string}-${p.fret}`).join('|') === signature)) {
-                    voicings.push({
-                        name: name,
-                        positions: combo
-                    });
-                }
+                validCombinations.push(combo);
             }
         });
+
+        // Filter duplicates (same shape, octave shifted)
+        // Since we are iterating a specific set of notes on a specific set of strings,
+        // any multiple valid combinations are almost certainly octave displacements.
+        // We sort by lowest fret and keep the first one.
+        validCombinations.sort((a, b) => {
+            const minA = Math.min(...a.map(p => p.fret));
+            const minB = Math.min(...b.map(p => p.fret));
+            return minA - minB;
+        });
+
+        // Take only the lowest one
+        if (validCombinations.length > 0) {
+            const bestCombo = validCombinations[0];
+
+            // Check if already exists (global dedup still needed for Cross-Algorithm duplicates)
+            const signature = bestCombo.map(p => `${p.string}-${p.fret}`).join('|');
+            if (!voicings.some(v => v.positions.map(p => `${p.string}-${p.fret}`).join('|') === signature)) {
+                voicings.push({
+                    name: name,
+                    positions: bestCombo
+                });
+            }
+        }
     };
 
     // GENERATE DROP VOICINGS from Sorted Sets (Primary)
@@ -295,14 +314,32 @@ function generateShellVoicings(notes: Note[], type: 'Shell' | 'FreddieGreen', vo
         });
 
         const combinations = cartesian(possiblePositions);
+        const validCombinations: FretPosition[][] = [];
+
         combinations.forEach(combo => {
             const frets = combo.map(p => p.fret);
             const minFret = Math.min(...frets);
             const maxFret = Math.max(...frets);
             if (maxFret - minFret <= 4) { // Playable span
-                voicings.push({ name, positions: combo });
+                validCombinations.push(combo);
             }
         });
+
+        // Filter duplicates (keep lowest)
+        validCombinations.sort((a, b) => {
+            const minA = Math.min(...a.map(p => p.fret));
+            const minB = Math.min(...b.map(p => p.fret));
+            return minA - minB;
+        });
+
+        if (validCombinations.length > 0) {
+            const bestCombo = validCombinations[0];
+            // Check if already exists
+            const signature = bestCombo.map(p => `${p.string}-${p.fret}`).join('|');
+            if (!voicings.some(v => v.positions.map(p => `${p.string}-${p.fret}`).join('|') === signature)) {
+                voicings.push({ name, positions: bestCombo });
+            }
+        }
     };
 
     // Strings: E(0), A(1), D(2), G(3), B(4), E(5)
