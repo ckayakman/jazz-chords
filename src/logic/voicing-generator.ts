@@ -47,14 +47,41 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
         if (notes.length !== 3) return [];
     }
 
-    // 1. Generate the 4 close voicings (inversions)
-    // [1, 3, 5, 7], [3, 5, 7, 1], [5, 7, 1, 3], [7, 1, 3, 5]
-    const inversions = [
-        [notes[0], notes[1], notes[2], notes[3]],
-        [notes[1], notes[2], notes[3], notes[0]],
-        [notes[2], notes[3], notes[0], notes[1]],
-        [notes[3], notes[0], notes[1], notes[2]],
-    ];
+    // 1. Generate inversions
+    // We want to cover both the strict input order (stacked thirds usually)
+    // AND the pitch-class sorted order (true Close Position blocks), 
+    // which handles cases like 7#11 where the #11 is a #4 within the octave.
+
+    const getInversions = (baseNotes: Note[]) => {
+        const result: Note[][] = [];
+        const rotations = [
+            [baseNotes[0], baseNotes[1], baseNotes[2], baseNotes[3]],
+            [baseNotes[1], baseNotes[2], baseNotes[3], baseNotes[0]],
+            [baseNotes[2], baseNotes[3], baseNotes[0], baseNotes[1]],
+            [baseNotes[3], baseNotes[0], baseNotes[1], baseNotes[2]],
+        ];
+        rotations.forEach(r => result.push(r));
+        return result;
+    }
+
+    const inputInversions = getInversions(notes);
+
+    // Generate sorted inversions for "Compressed" close forms
+    const sortedNotes = [...notes].sort((a, b) => getNoteIndex(a) - getNoteIndex(b));
+    const sortedInversions = getInversions(sortedNotes);
+
+    // Combine and deduplicate
+    // Simple stringify check for dedup
+    const seen = new Set<string>();
+    const allInversions: Note[][] = [];
+
+    [...inputInversions, ...sortedInversions].forEach(inv => {
+        const key = inv.join(',');
+        if (!seen.has(key)) {
+            seen.add(key);
+            allInversions.push(inv);
+        }
+    });
 
     const voicings: Voicing[] = [];
 
@@ -63,53 +90,80 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
         return voicings;
     }
 
-    // Define processing order to ensure "Root Position" (Root in bass) comes first.
-    // Drop 2:
-    // - Close Inv 2 (Root at index 2) -> Drop 2 -> Root in Bass (Root Pos)
-    // - Close Inv 3 -> Drop 2 -> 3rd in Bass (1st Inv)
-    // - Close Inv 0 -> Drop 2 -> 5th in Bass (2nd Inv)
-    // - Close Inv 1 -> Drop 2 -> 7th in Bass (3rd Inv)
-    // Order: [2, 3, 0, 1]
+    // Standard Drop Voicing Generation
+    // We iterate through ALL generated inversions to find Drop voicings.
+    // However, the "Order" logic (Root Pos, 1st Inv etc) is based on *specific* inversions of the standard tertian stack.
+    // If we throw 8 inversions at it, the naming ("Root Position") might get messy or incorrect if we just use index.
+    // Strategy:
+    // 1. Generate "Standard" Drop voicings using strictly the `inputInversions` (assuming input is R-3-5-7 or similar standard stack).
+    //    This preserves the standard naming mapping [Root, 1st, 2nd, 3rd].
+    // 2. Generate "Supplementary" Drop voicings using `sortedInversions`. 
+    //    Name them generic "Drop X var" or try to infer bass? 
+    //    Actually, "Close Root Pos" etc refers to the Close parent.
+    //    Let's just iterate `allInversions` but try to allow the loop to assign names if possible, or just use generic naming for the extras.
 
-    // Drop 3:
-    // - Close Inv 3 (Root at index 1) -> Drop 3 -> Root in Bass (Root Pos)
-    // - Close Inv 0 -> Drop 3 -> 3rd in Bass (1st Inv)
-    // - Close Inv 1 -> Drop 3 -> 5th in Bass (2nd Inv)
-    // - Close Inv 2 -> Drop 3 -> 7th in Bass (3rd Inv)
-    // Order: [3, 0, 1, 2]
+    // To keep it clean and fix the user's specific issue:
+    // The user wants G7#11 (Drop 2) to exist.
+    // That comes from the Sorted set.
+    // If we just process the Sorted Set as the primary source for Drop 2/3/etc, we get the standard "Block Chord" theory voicings.
+    // IS input `notes` always in Stacked Thirds order from App.tsx? Yes, `getNotesFromIntervals` does that.
+    // BUT for chords like 7#11, strict stacked thirds (R 3 5 7 11) spans > 1 octave if 11 is on top.
+    // Sorted set brings it back into one octave.
+    // MOST Jazz theory teaches Drop voicings derived from the one-octave Close block.
+    // So `sortedInversions` is actually BETTER as the primary source than `inputInversions`.
+    // Let's use `sortedInversions` as the primary list for the standard [Root, 1st, 2nd, 3rd] naming if the input was indeed a known chord type.
 
-    // Drop 2 & 4:
-    // Drop the 2nd and 4th notes from the top (indices 1 & 3 of close position [0,1,2,3] -> wait, close is bottom up?)
-    // Standard def:
-    // Drop 2: 2nd from top of close voicing.
-    // Drop 3: 3rd from top of close voicing.
-    // Drop 2 & 4: 2nd and 4th from top of close voicing.
-    // My inversions are defined as [lowest, ..., highest] in pitch for close voicings?
-    // Let's verify: inversions[0] = [1, 3, 5, 7]. Top is 7 (index 3). 2nd from top is 5 (index 2). 4th from top is 1 (index 0).
-    // So Drop 2&4 means taking indices 2 and 0 and dropping them an octave.
-    // This leaves indices 1 and 3 in place.
-    // Bass note will be index 0 or index 2 (whichever ends up lower, likely index 0 dropped).
+    // However, `getNotesFromIntervals` returns sorted by interval size.
+    // Cmaj7 -> C E G B. Sorted -> C E G B. Match.
+    // C7#11 (no 5) -> C E Bb F#. Sorted -> C E F# Bb.
+    // Input inversions: [C E Bb F#] ...
+    // Sorted inversions: [C E F# Bb] ...
+    // Drop 2 from Input[0] (C E Bb F#) -> Drop Bb -> Bb C E F#. (Bass Bb).
+    // Drop 2 from Sorted[0] (C E F# Bb) -> Drop F# -> F# C E Bb. (Bass F#).
 
-    // Order for Drop 2&4:
-    // Ideally we want Root in Bass first.
-    // If we take inv[0] (1 3 5 7) -> Drop 5 and 1. Bass is 1. -> Root Position.
-    // If we take inv[1] (3 5 7 1) -> Drop 7 and 3. Bass is 3. -> 1st Inv.
-    // If we take inv[2] (5 7 1 3) -> Drop 1 and 5. Bass is 5. -> 2nd Inv.
-    // If we take inv[3] (7 1 3 5) -> Drop 3 and 7. Bass is 7. -> 3rd Inv.
-    // So the order [0, 1, 2, 3] maps to [Root, 1st, 2nd, 3rd] inversions naturally!
+    // The user's requested G7#11 voicing was `G C# F B` (Bass G).
+    // From Sorted: `C# F G B` -> Drop G -> G C# F B. (This is Drop 2 of the 1st inversion of sorted set).
+    // So yes, we need standard Drop logic on the Sorted Set.
+
+    // Let's combine them but prioritize Sorted for the Naming alignment? 
+    // Actually, let's just run both sets and name them.
+    // We can label them "Drop X (Var)" if they come from the extra set.
+
+    // Actually, to avoid duplicates in the generic loops, let's just use `allInversions`.
+    // But for naming:
+    // We will just label them "Drop X" (we lose the "Root Pos" label specificity if we don't know which voice is root).
+    // Current code: `names[i]`.
+    // Let's rely on standard logic:
+    // Check which note is in the bass? No, too complex.
+    // Let's just generate them. The user sees the Chord Name, and we append "Drop X".
+    // Current code appends names like "Root Position".
+
+    // Compromise:
+    // Run the standard loop on `inputInversions` (First 4) with the standard names.
+    // Run a loop on `sortedInversions` (if different) with "Alt" names?
+    // OR, just replace usages.
+    // Given the user specifically asked for "Close" forms and found them missing...
+    // I will simplify:
+    // Use `sortedInversions` to generate the bulk of standard jazz voicings.
+    // Use `inputInversions` as well to catch wide stacks.
 
     const order = type === 'Drop2' ? [2, 3, 0, 1] : type === 'Drop3' ? [3, 0, 1, 2] : [0, 1, 2, 3];
-    const names = ["Root Position", "1st Inversion", "2nd Inversion", "3rd Inversion"];
+    const standardNames = ["Root Position", "1st Inversion", "2nd Inversion", "3rd Inversion"];
+    // Note: The `order` array was mapping Close Inversions -> Drop Inversions such that Drop Bass matches Close Bass.
+    // This mapping holds true for Sorted Sets (standard block chords).
+    // So using `sortedInversions` with `order` and `standardNames` is the THEORETICALLY CORRECT way for Drop Voicings.
 
-    // Helper to generate and check voicings
+    // So I will primarily use Sorted Inversions for the main names.
+    const primaryInversions = sortedInversions;
+
     const tryVoicing = (targetNotes: Note[], name: string, stringSet: number[]) => {
         const possiblePositions: FretPosition[][] = [];
         for (let k = 0; k < 4; k++) {
             const s = stringSet[k];
             const target = targetNotes[k];
             const positions: FretPosition[] = [];
-            // Search frets 1 to 17
-            for (let f = 1; f <= 17; f++) {
+            // Search frets 1 to 18 (No open strings allowed for portability)
+            for (let f = 1; f <= 18; f++) {
                 if (isSameNote(getNoteAtFret(s, f), target)) {
                     positions.push({ string: s, fret: f, note: target });
                 }
@@ -120,24 +174,33 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
         const combinations = cartesian(possiblePositions);
         combinations.forEach(combo => {
             const frets = combo.map(p => p.fret);
+            // Since we excluded 0, we can just take max - min
             const minFret = Math.min(...frets);
             const maxFret = Math.max(...frets);
+            const span = maxFret - minFret;
 
-            // Span check: usually 4 or 5 frets.
-            // Drop 2 & 4 are wider, allow up to 6?
-            const limit = (type === 'Drop2_4') ? 6 : 4;
+            // Span limits:
+            // Drop 2 & 4: Limit "6 frets tall" means max-min=5
+            // All others: Limit "5 frets tall" means max-min=4
+            // User feedback: "diagram cannot cross more than 5 frets" (Inclusive count likely)
+            const limit = (type === 'Drop2_4') ? 5 : 4;
 
-            if (maxFret - minFret <= limit) {
-                voicings.push({
-                    name: name,
-                    positions: combo
-                });
+            if (span <= limit) {
+                // Check if already exists
+                const signature = combo.map(p => `${p.string}-${p.fret}`).join('|');
+                if (!voicings.some(v => v.positions.map(p => `${p.string}-${p.fret}`).join('|') === signature)) {
+                    voicings.push({
+                        name: name,
+                        positions: combo
+                    });
+                }
             }
         });
     };
 
+    // GENERATE DROP VOICINGS from Sorted Sets (Primary)
     order.forEach((invIndex, i) => {
-        const inv = inversions[invIndex];
+        const inv = primaryInversions[invIndex];
         let targetNotes: Note[] = [];
         let stringSet: number[] = [];
 
@@ -149,39 +212,55 @@ export function generateVoicings(notes: Note[], type: VoicingType, stringSetOver
             stringSet = stringSetOverride || [0, 2, 3, 4];
         } else {
             // Drop 2 & 4
-            // Original Close: [0, 1, 2, 3] (Low to High)
-            // Drop 2 (index 2) and 4 (index 0).
-            // Bottom up order: Index 0 (Dropped), Index 2 (Dropped), Index 1, Index 3.
-            // Wait, dropping usually means lowering octave.
-            // If we drop index 0 (Root in inv 0) it goes WAY down? No, it's already at bottom of close.
-            // Let's re-read standard theory.
-            // "Drop 2 and 4" comes from 5-part harmony block chords usually, but for guitar:
-            // "Drop the second and fourth voices from the top of the chord down an octave."
-            // Close: 1 3 5 7 (Root Pos). Top=7. 2nd=5. 3rd=3. 4th=1.
-            // Drop 5 and 1.
-            // New vertical order (low to high): 1 (dropped), 5 (dropped), 3, 7.
-            // Intervals: 1, 5, 3, 7. (Open voicing).
-            // Let's check string sets. E A D G B E.
-            // 1(LowE), 5(A), 3(D), 7(G) -> Valid?
-            // Or 1(A), 5(D), 3(G), 7(B) -> Valid.
-            // So order of voices in `targetNotes` should be lowest string to highest string.
-            // [inv[0], inv[2], inv[1], inv[3]]
+            // From Close (Low to High): 0, 1, 2, 3.
+            // Drop 2nd (Index 2) and 4th (Index 0).
+            // Result (Low to High): 0, 2, 1, 3.
             targetNotes = [inv[0], inv[2], inv[1], inv[3]];
-            stringSet = stringSetOverride || [0, 1, 2, 3]; // Default low set
+            stringSet = stringSetOverride || [0, 1, 2, 3];
         }
-
-        tryVoicing(targetNotes, names[i], stringSet);
+        tryVoicing(targetNotes, standardNames[i], stringSet);
     });
 
-    // For Drop 2, also attempt "Close" voicings as they are often playable and desirable
-    // especially for Omit 5 chords (e.g. C, E, B, D).
-    if (type === 'Drop2') {
-        const closeNames = ["Close Root Pos", "Close 1st Inv", "Close 2nd Inv", "Close 3rd Inv"];
-        inversions.forEach((inv, i) => {
-            const stringSet = stringSetOverride || [2, 3, 4, 5];
-            tryVoicing(inv, closeNames[i], stringSet);
-        });
-    }
+    // GENERATE DROP VOICINGS from Input Sets (if different) - Catch-all for wide intervals
+    // We won't name them "Root Position" etc because we don't know the bass logic relative to sorted.
+    // Just "Drop X Var".
+    inputInversions.forEach((inv) => {
+        // Skip if this inversion is effectively the same as one in sorted (permutation check)
+        // Actually, just generate and rely on dedup in `tryVoicing`.
+
+        let targetNotes: Note[] = [];
+        let stringSet: number[] = [];
+
+        if (type === 'Drop2') {
+            targetNotes = [inv[2], inv[0], inv[1], inv[3]];
+            stringSet = stringSetOverride || [2, 3, 4, 5];
+        } else if (type === 'Drop3') {
+            targetNotes = [inv[1], inv[0], inv[2], inv[3]];
+            stringSet = stringSetOverride || [0, 2, 3, 4];
+        } else {
+            targetNotes = [inv[0], inv[2], inv[1], inv[3]];
+            stringSet = stringSetOverride || [0, 1, 2, 3];
+        }
+        tryVoicing(targetNotes, `${type} Var`, stringSet);
+    });
+
+
+    // GENERATE CLOSE VOICINGS (Explicit "Close" forms on the string set)
+    // Run for ALL types now (Drop2, Drop3, Drop2_4) to cover user request.
+    const closeNames = ["Close Root Pos", "Close 1st Inv", "Close 2nd Inv", "Close 3rd Inv"];
+
+    // Use Sorted Inversions for Close forms (this is the standard definition)
+    primaryInversions.forEach((inv, i) => {
+        const stringSet = stringSetOverride || (type === 'Drop2' ? [2, 3, 4, 5] : type === 'Drop3' ? [0, 2, 3, 4] : [0, 1, 2, 3]);
+        // Note: For Close voicings on Split sets (Drop 3), the span might be large, but we try anyway.
+        tryVoicing(inv, closeNames[i], stringSet);
+    });
+
+    // Also try Input Inversions for Close forms (wide close?)
+    inputInversions.forEach((inv) => {
+        const stringSet = stringSetOverride || (type === 'Drop2' ? [2, 3, 4, 5] : type === 'Drop3' ? [0, 2, 3, 4] : [0, 1, 2, 3]);
+        tryVoicing(inv, "Close Var", stringSet);
+    });
 
     return voicings;
 }
