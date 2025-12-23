@@ -214,9 +214,10 @@ h2 {
     font-size: 1.8rem;
     color: var(--secondary-color);
     outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    /* Removed flex to restore default marker */
+    /* display: flex; */
+    /* align-items: center; */
+    /* justify-content: space-between; */
 }
 
 .sequencer-controls {
@@ -519,7 +520,9 @@ h2 {
         border: 2px solid var(--primary-color) !important;
         background-color: var(--surface-color) !important;
     }
-}/* Modal Styles */
+}
+
+/* Modal Styles */
 .modal-overlay {
     position: fixed;
     top: 0;

@@ -507,39 +507,6 @@ function App() {
                     </section>
                 )}
 
-                {drop2_4LowVoicings.length > 0 && shouldShowSection('drop2-4-low') && (
-                    <section className="voicing-section">
-                        <h2>Drop 2 & 4 Voicings - Low Strings (6,5,4,2)</h2>
-                        <div className="diagram-grid">
-                            {drop2_4LowVoicings.map((v, i) => (
-                                <ChordDiagram
-                                    key={`d24l-${i}`}
-                                    voicing={v}
-                                    displayMode={displayMode}
-                                    intervalMap={intervalMap}
-                                    onClick={() => handleChordClick(v)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                )}
-
-                {drop2_4HighVoicings.length > 0 && shouldShowSection('drop2-4-high') && (
-                    <section className="voicing-section">
-                        <h2>Drop 2 & 4 Voicings - High Strings (5,4,3,1)</h2>
-                        <div className="diagram-grid">
-                            {drop2_4HighVoicings.map((v, i) => (
-                                <ChordDiagram
-                                    key={`d24h-${i}`}
-                                    voicing={v}
-                                    displayMode={displayMode}
-                                    intervalMap={intervalMap}
-                                    onClick={() => handleChordClick(v)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                )}
 
                 {drop3LowVoicings.length > 0 && shouldShowSection('drop3-bot') && (
                     <section className="voicing-section">
@@ -599,6 +566,40 @@ function App() {
                             {freddieGreenVoicings.map((v, i) => (
                                 <ChordDiagram
                                     key={`fg-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {drop2_4LowVoicings.length > 0 && shouldShowSection('drop2-4-low') && (
+                    <section className="voicing-section">
+                        <h2>Drop 2 & 4 Voicings - Low Strings (6,5,4,2)</h2>
+                        <div className="diagram-grid">
+                            {drop2_4LowVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`d24l-${i}`}
+                                    voicing={v}
+                                    displayMode={displayMode}
+                                    intervalMap={intervalMap}
+                                    onClick={() => handleChordClick(v)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {drop2_4HighVoicings.length > 0 && shouldShowSection('drop2-4-high') && (
+                    <section className="voicing-section">
+                        <h2>Drop 2 & 4 Voicings - High Strings (5,4,3,1)</h2>
+                        <div className="diagram-grid">
+                            {drop2_4HighVoicings.map((v, i) => (
+                                <ChordDiagram
+                                    key={`d24h-${i}`}
                                     voicing={v}
                                     displayMode={displayMode}
                                     intervalMap={intervalMap}
