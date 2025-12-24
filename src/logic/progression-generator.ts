@@ -1,7 +1,7 @@
 import { Note, transpose, parseChord, getNotesFromIntervals, getIntervalMap } from './music-theory';
 import { generateVoicings, Voicing, VoicingType } from './voicing-generator';
 
-export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges' | 'MajorI_vi_ii_V' | 'Major_iii_vi_ii_V' | 'MinorTurnaround' | 'RhythmChangesBridge';
+export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges' | 'MajorI_vi_ii_V' | 'Major_iii_vi_ii_V' | 'MinorTurnaround' | 'RhythmChangesBridge' | 'ExtendedTurnaround' | 'TakeTheATrain';
 
 export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
     'MajorII_V_I': 'Major ii-V-I',
@@ -12,7 +12,10 @@ export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
     'MajorI_vi_ii_V': 'Major I-vi-ii-V',
     'Major_iii_vi_ii_V': 'Major iii-vi-ii-V',
     'MinorTurnaround': 'Minor Turnaround (i-bVI-ii-V)',
-    'RhythmChangesBridge': 'Rhythm Changes Bridge'
+    'MinorTurnaround': 'Minor Turnaround (i-bVI-ii-V)',
+    'RhythmChangesBridge': 'Rhythm Changes Bridge',
+    'ExtendedTurnaround': 'Extended Turnaround (vi-ii-V-I-IV-ii-V-I)',
+    'TakeTheATrain': 'Take the A Train (I-I-II-II-ii-V-I)'
 };
 
 export const AVAILABLE_KEYS: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -52,6 +55,16 @@ const PROGRESSIONS: Record<ProgressionType, { degrees: number[], suffixes: strin
         degrees: [4, 9, 2, 7], // III(4), VI(9), II(2), V(7) - Dominant 7ths for Bridge
         suffixes: ['7', '7', '7', '7'],
         measures: [1, 1, 1, 1]
+    },
+    'ExtendedTurnaround': {
+        degrees: [9, 2, 7, 0, 5, 2, 7, 0], // vi, ii, V, I, IV, ii, V, I
+        suffixes: ['m7', 'm7', '7', 'maj7', 'maj7', 'm7', '7', 'maj7'],
+        measures: [1, 1, 1, 1, 1, 1, 1, 1]
+    },
+    'TakeTheATrain': {
+        degrees: [0, 0, 2, 2, 2, 7, 0, 0], // I, I, II, II, ii, V, I, I
+        suffixes: ['maj7', 'maj7', '7#11', '7#11', 'm7', '7', 'maj7', 'maj7'],
+        measures: [1, 1, 1, 1, 1, 1, 1, 1]
     },
     'MajorBlues': {
         // Standard Jazz Blues in Bb: Bb7, Eb7, Bb7, Fm7 Bb7, Eb7, Edim, Bb7, G7, Cm7, F7, Bb7 G7, Cm7 F7
