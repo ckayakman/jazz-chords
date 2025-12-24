@@ -12,7 +12,7 @@ export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
     'MajorI_vi_ii_V': 'Major I-vi-ii-V',
     'Major_iii_vi_ii_V': 'Major iii-vi-ii-V',
     'MinorTurnaround': 'Minor Turnaround (i-bVI-ii-V)',
-    'MinorTurnaround': 'Minor Turnaround (i-bVI-ii-V)',
+
     'RhythmChangesBridge': 'Rhythm Changes Bridge',
     'ExtendedTurnaround': 'Extended Turnaround (vi-ii-V-I-IV-ii-V-I)',
     'TakeTheATrain': 'Take the A Train (I-I-II-II-ii-V-I)'
