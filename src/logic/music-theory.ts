@@ -157,6 +157,15 @@ export function parseChord(name: string): ChordComponents | null {
     } else if (rest === "dom7sus4" || rest === "7sus4") {
         quality = "Dominant 7 sus4";
         intervals = ["1P", "4P", "5P", "7m"];
+    } else if (rest === "13" || rest === "dom13") {
+        quality = "Dominant 13";
+        intervals = ["1P", "3M", "5P", "7m", "9M", "13M"];
+    } else if (rest === "7add13" || rest === "7+6" || rest === "dom7add13") {
+        quality = "Dominant 7(add13)";
+        intervals = ["1P", "3M", "5P", "7m", "13M"];
+    } else if (rest === "6/9" || rest === "maj6/9" || rest === "M6/9" || rest === "Maj6/9") {
+        quality = "Major 6/9";
+        intervals = ["1P", "3M", "5P", "6M", "9M"];
     } else if (rest === "alt" || rest === "7alt" || rest === "dom7alt") {
         quality = "Altered Dominant";
         // Base intervals for identification, but App.tsx will expand this into multiple variations
@@ -206,6 +215,7 @@ export function getNotesFromIntervals(root: Note, intervals: Interval[]): Note[]
             case "9M": semitones = 14; break;
             case "9A": semitones = 15; break; // #9
             case "11A": semitones = 18; break; // Same pitch class as #4 (6 semitones)
+            case "13M": semitones = 21; break; // Same pitch class as 6 (9 semitones)
         }
 
         // Force sharps for Augmented intervals (e.g. #5, #11) unless root dictates otherwise?

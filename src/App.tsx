@@ -241,6 +241,66 @@ function App() {
             fg = generateVoicings(shellNotes, 'FreddieGreen')
 
 
+        } else if (notes.length === 6) {
+            // 6-note chord (e.g. 13th): Root, 3rd, 5th, 7th, 9th, 13th
+            // Indices: 0, 1, 2, 3, 4, 5
+
+            // Common Jazz Guitar Voicings for 13th:
+            // 1. Omit 5 & 9 (Shell + 13): R, 3, 7, 13 -> Indices 0, 1, 3, 5
+            // 2. Omit Root & 5 (Rootless 9 + 13): 3, 7, 9, 13 -> Indices 1, 3, 4, 5
+            // 3. Omit 5 & Root (Wait, R, 3, 7, 13 is standard)
+
+            const notesOmit59 = [notes[0], notes[1], notes[3], notes[5]] // R, 3, 7, 13
+            const notesRootless = [notes[1], notes[3], notes[4], notes[5]] // 3, 7, 9, 13
+
+            const genAndLabel = (n: string[], labelSuffix: string, type: 'Drop2' | 'Drop3' | 'Drop2_4', strings: number[]) => {
+                return generateVoicings(n, type, strings).map(v => ({
+                    ...v,
+                    name: `${v.name} ${labelSuffix}`
+                }))
+            }
+
+            // Drop 2 Top
+            d2Top = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop2', [2, 3, 4, 5]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop2', [2, 3, 4, 5])
+            ]
+            // Drop 2 Mid
+            d2Mid = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop2', [1, 2, 3, 4]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop2', [1, 2, 3, 4])
+            ]
+            // Drop 2 Bot
+            d2Bot = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop2', [0, 1, 2, 3]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop2', [0, 1, 2, 3])
+            ]
+            // Drop 2 & 4 Low
+            d2_4Low = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop2_4', [0, 1, 2, 4]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop2_4', [0, 1, 2, 4])
+            ]
+            // Drop 2 & 4 High
+            d2_4High = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop2_4', [1, 2, 3, 5]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop2_4', [1, 2, 3, 5])
+            ]
+            // Drop 3 Low
+            d3Low = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop3', [0, 2, 3, 4]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop3', [0, 2, 3, 4])
+            ]
+            // Drop 3 High
+            d3High = [
+                ...genAndLabel(notesOmit59, '(Omit 5, 9)', 'Drop3', [1, 3, 4, 5]),
+                ...genAndLabel(notesRootless, '(Rootless 9, 13)', 'Drop3', [1, 3, 4, 5])
+            ]
+
+            // Shell & FG: Root, 3rd, 7th -> Indices 0, 1, 3
+            const shellNotes = [notes[0], notes[1], notes[3]]
+            shell = generateVoicings(shellNotes, 'Shell')
+            fg = generateVoicings(shellNotes, 'FreddieGreen')
+
         } else {
             setError('This app only supports 6th, 7th, and extended chords.')
             setDrop2TopVoicings([])
@@ -422,6 +482,9 @@ function App() {
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Augmented Dominant 7</span> (7#5, dom7#5): 1, 3, #5, b7</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 #11</span> (7#11, dom7#11): 1, 3, 5, b7, #11</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7 sus4</span> (7sus4): 1, 4, 5, b7</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 13</span> (13, dom13): 1, 3, 5, b7, 9, 13</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Dominant 7(add13)</span> (7+6, 7add13): 1, 3, 5, b7, 13</li>
+                                <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Major 6/9</span> (6/9, maj6/9): 1, 3, 5, 6, 9</li>
                                 <li><span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Altered Dominant</span> (alt, 7alt): 1, 3, b7 + (b5/#5, b9/#9)</li>
                             </ul>
                         </div>
