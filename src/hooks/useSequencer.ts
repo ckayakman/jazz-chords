@@ -18,6 +18,12 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     const timerIDRef = useRef<number | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
 
+    // Track isPlaying in a ref for access inside async/timeout callbacks
+    const isPlayingRef = useRef(isPlaying);
+    useEffect(() => {
+        isPlayingRef.current = isPlaying;
+    }, [isPlaying]);
+
     // Keep sequence in a ref to access latest value in scheduler interval
     const sequenceRef = useRef(sequence);
     useEffect(() => {
@@ -153,6 +159,10 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     const scheduleNote = (beatNumber: number, time: number) => {
         const delay = (time - audioCtxRef.current!.currentTime) * 1000;
         setTimeout(() => {
+            // Check if still playing before updating state to avoid race condition
+            // where stop is pressed but this timeout still fires
+            if (!isPlayingRef.current) return;
+
             // Only update currentBeat if >= 0 to avoid highlighting weird slots negative
             if (beatNumber >= 0) {
                 setCurrentBeat(beatNumber);
