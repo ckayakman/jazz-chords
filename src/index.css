@@ -479,6 +479,71 @@ h2 {
     color: #aaa;
 }
 
+/* Rhythm Dropdown Styles (based on Filter) */
+.rhythm-container {
+    position: relative;
+    display: inline-block;
+}
+
+.rhythm-btn {
+    padding: 0.4rem 1rem;
+    /* Slightly smaller than filter to fit sequencer bar? Or match? User said "looks the same". Filter is 0.8rem 1.5rem. That's big. */
+    /* Let's try to match the *height* of other controls in the sequencer bar. */
+    /* Other controls are .control-btn. Padding 0.5rem 1rem. */
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: var(--primary-color);
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rhythm-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+.rhythm-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    /* User said "Right justified to be next to the tempo". Alignment might matter. */
+    margin-top: 0.5rem;
+    background-color: var(--surface-color);
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    min-width: 200px;
+    overflow: hidden;
+    text-align: left;
+}
+
+.rhythm-option {
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: var(--text-color);
+    transition: background-color 0.2s;
+}
+
+.rhythm-option:hover {
+    background-color: #333;
+}
+
+.rhythm-option.selected {
+    background-color: #2a2a2a;
+    color: var(--primary-color);
+}
+
 .bpm-input {
     width: 3.5rem;
     padding: 0.4rem;

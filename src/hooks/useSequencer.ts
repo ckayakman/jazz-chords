@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { playChordAt, playClickAt, getAudioContext } from '../logic/audio';
+import { RHYTHM_PATTERNS, RhythmPatternKey } from '../logic/rhythm-patterns';
 
 interface UseSequencerProps {
     sequence: (Voicing | null)[];
@@ -9,9 +10,10 @@ interface UseSequencerProps {
     isPaused: boolean;
     isRepeatMode: boolean;
     repeatRange: { start: number, end: number } | null;
+    selectedRhythm: RhythmPatternKey;
 }
 
-export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange }: UseSequencerProps) {
+export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange, selectedRhythm }: UseSequencerProps) {
     const [currentBeat, setCurrentBeat] = useState<number>(-1);
     const nextNoteTimeRef = useRef<number>(0);
     const currentStepRef = useRef<number>(0);
@@ -23,6 +25,12 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     useEffect(() => {
         isPlayingRef.current = isPlaying;
     }, [isPlaying]);
+
+    // Track selectedRhythm in ref
+    const selectedRhythmRef = useRef(selectedRhythm);
+    useEffect(() => {
+        selectedRhythmRef.current = selectedRhythm;
+    }, [selectedRhythm]);
 
     // Keep sequence in a ref to access latest value in scheduler interval
     const sequenceRef = useRef(sequence);
@@ -181,8 +189,29 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
         } else {
             // Play audio using fresh sequence ref
             const voicing = sequenceRef.current[beatNumber];
+
             if (voicing) {
-                playChordAt(voicing.positions, time);
+                const currentPattern = RHYTHM_PATTERNS[selectedRhythmRef.current] || RHYTHM_PATTERNS['Four on the Floor'];
+                // Determine beat index within 4/4 measure (0, 1, 2, 3)
+                const beatIndex = beatNumber % 4;
+                const triggers = currentPattern[beatIndex];
+
+                if (triggers && triggers.length > 0) {
+                    triggers.forEach(trigger => {
+                        const secondsPerBeat = 60.0 / bpm;
+                        const triggerTime = time + (trigger.offset * secondsPerBeat);
+
+                        // Calculate duration in seconds
+                        // Default to 1.0 (beat-relative?) No, in audio.ts defaults to 1.0s.
+                        // Let's standardise: trigger.duration is in BEATS.
+                        // If not specified, default to 1 beat (often too long for fast tempos, but okay for quarter note strum)
+                        // Actually, 'Four on Floor' is quarters. 
+                        const durationBeats = trigger.duration || 1.0;
+                        const durationSeconds = durationBeats * secondsPerBeat;
+
+                        playChordAt(voicing.positions, triggerTime, durationSeconds);
+                    });
+                }
             }
         }
     };
@@ -197,3 +226,4 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
     return { currentBeat, stepTo };
 }
+

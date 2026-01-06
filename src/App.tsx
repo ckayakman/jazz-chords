@@ -4,6 +4,7 @@ import { generateVoicings, Voicing } from './logic/voicing-generator'
 import ChordDiagram from './components/ChordDiagram'
 import Sequencer from './components/Sequencer'
 import { useSequencer } from './hooks/useSequencer'
+import { RhythmPatternKey } from './logic/rhythm-patterns'
 import { playChord } from './logic/audio'
 import FilterDropdown from './components/FilterDropdown'
 import { validateSequence } from './logic/persistence-utils'
@@ -34,9 +35,10 @@ function App() {
     const [repeatRange, setRepeatRange] = useState<{ start: number, end: number } | null>(null)
 
     const [bpm, setBpm] = useState(90)
+    const [selectedRhythm, setSelectedRhythm] = useState<RhythmPatternKey>('Four on the Floor')
     const [hasInteracted, setHasInteracted] = useState(false)
 
-    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange })
+    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange, selectedRhythm })
 
     // Sync active slot when paused to allow editing
     useEffect(() => {
@@ -516,6 +518,8 @@ function App() {
                 repeatRange={repeatRange}
                 onToggleRepeatMode={handleToggleRepeat}
                 onSetRepeatRange={setRepeatRange}
+                selectedRhythm={selectedRhythm}
+                onRhythmChange={(val) => setSelectedRhythm(val)}
             />
 
             <main>

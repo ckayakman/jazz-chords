@@ -8,6 +8,7 @@ import { generateProgressionSequence } from '../logic/progression-generator';
 import ChordDiagram from './ChordDiagram';
 import SaveModal from './SaveModal';
 import ProgressionModal from './ProgressionModal';
+import { RHYTHM_PATTERNS } from '../logic/rhythm-patterns';
 
 interface SequencerProps {
     sequence: ((Voicing & { intervalMap?: Record<string, string> }) | null)[];
@@ -33,6 +34,8 @@ interface SequencerProps {
     repeatRange: { start: number, end: number } | null;
     onToggleRepeatMode: () => void;
     onSetRepeatRange: (range: { start: number, end: number } | null) => void;
+    selectedRhythm: string;
+    onRhythmChange: (rhythm: any) => void;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({
@@ -58,7 +61,9 @@ const Sequencer: React.FC<SequencerProps> = ({
     isRepeatMode,
     repeatRange,
     onToggleRepeatMode,
-    onSetRepeatRange
+    onSetRepeatRange,
+    selectedRhythm,
+    onRhythmChange
 }) => {
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
@@ -68,6 +73,22 @@ const Sequencer: React.FC<SequencerProps> = ({
     const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
     const [copyStart, setCopyStart] = React.useState<number | null>(null);
     const [copyEnd, setCopyEnd] = React.useState<number | null>(null);
+
+    // Rhythm Dropdown State
+    const [showRhythmDropdown, setShowRhythmDropdown] = React.useState(false);
+    const rhythmDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (rhythmDropdownRef.current && !rhythmDropdownRef.current.contains(event.target as Node)) {
+                setShowRhythmDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
 
 
@@ -277,7 +298,6 @@ const Sequencer: React.FC<SequencerProps> = ({
             <div className="px-6 pb-6 fade-in-up">
                 <div className="sequencer-controls">
                     <div className="bpm-input-container" onClick={() => document.getElementById('bpm-input')?.focus()}>
-                        <label htmlFor="bpm-input" className="bpm-label">Tempo (bpm)</label>
                         <input
                             id="bpm-input"
                             type="number"
@@ -294,6 +314,35 @@ const Sequencer: React.FC<SequencerProps> = ({
                             }}
                             className="bpm-input"
                         />
+                    </div>
+
+                    <div className="rhythm-container" ref={rhythmDropdownRef}>
+                        <button
+                            className="rhythm-btn"
+                            onClick={() => setShowRhythmDropdown(!showRhythmDropdown)}
+                            title="Select Rhythm Pattern"
+                        >
+                            Rhythm
+                        </button>
+                        {showRhythmDropdown && (
+                            <div className="rhythm-dropdown">
+                                {Object.keys(RHYTHM_PATTERNS).map(key => (
+                                    <div
+                                        key={key}
+                                        className={`rhythm-option ${selectedRhythm === key ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            onRhythmChange(key);
+                                            setShowRhythmDropdown(false);
+                                        }}
+                                    >
+                                        <span className="checkbox">
+                                            {selectedRhythm === key && '✓'}
+                                        </span>
+                                        {key}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Play/Stop Button */}
