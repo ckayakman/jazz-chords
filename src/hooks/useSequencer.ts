@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Voicing } from '../logic/voicing-generator';
 import { playChordAt, playClickAt, getAudioContext } from '../logic/audio';
-import { RHYTHM_PATTERNS, RhythmPatternKey } from '../logic/rhythm-patterns';
+import { RHYTHM_PATTERNS, RhythmPatternKey, getAdaptiveTriggers } from '../logic/rhythm-patterns';
 
 interface UseSequencerProps {
     sequence: (Voicing | null)[];
@@ -194,7 +194,12 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
                 const currentPattern = RHYTHM_PATTERNS[selectedRhythmRef.current] || RHYTHM_PATTERNS['Four on the Floor'];
                 // Determine beat index within 4/4 measure (0, 1, 2, 3)
                 const beatIndex = beatNumber % 4;
-                const triggers = currentPattern[beatIndex];
+
+                // Get triggers using adaptive logic
+                // Check previous beat for harmonic context. 
+                // Note: If beatNumber is 0, prevVoicing is undefined (treated as null), forcing a play.
+                const prevVoicing = beatNumber > 0 ? sequenceRef.current[beatNumber - 1] : null;
+                const triggers = getAdaptiveTriggers(currentPattern, beatIndex, voicing, prevVoicing);
 
                 if (triggers && triggers.length > 0) {
                     triggers.forEach(trigger => {

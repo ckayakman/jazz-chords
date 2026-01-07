@@ -34,3 +34,32 @@ export const RHYTHM_PATTERNS: Record<string, RhythmPattern> = {
 };
 
 export type RhythmPatternKey = keyof typeof RHYTHM_PATTERNS;
+
+export function getAdaptiveTriggers(
+    pattern: RhythmPattern,
+    beatIndex: number,
+    currentVoicing: { name: string } | null,
+    prevVoicing: { name: string } | null
+): RhythmTrigger[] {
+    // 1. Get standard triggers for this beat from the pattern
+    const triggers = pattern[beatIndex];
+
+    // 2. If the pattern defines triggers, stick to the pattern (priority to rhythm)
+    if (triggers && triggers.length > 0) {
+        return triggers;
+    }
+
+    // 3. If no triggers, check for harmonic change ("Adaptation")
+    if (currentVoicing) {
+        // Play if it's the first beat (prev is null) or if the chord name has changed
+        const isChange = !prevVoicing || (currentVoicing.name !== prevVoicing.name);
+
+        if (isChange) {
+            // Fill the gap with a simple downbeat strum
+            return [{ offset: 0, duration: 1.0 }];
+        }
+    }
+
+    // 4. Otherwise, silence as per pattern
+    return [];
+}
