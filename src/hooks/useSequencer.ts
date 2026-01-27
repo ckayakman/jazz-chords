@@ -17,8 +17,8 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     const [currentBeat, setCurrentBeat] = useState<number>(-1);
     const nextNoteTimeRef = useRef<number>(0);
     const currentStepRef = useRef<number>(0);
-    const timerIDRef = useRef<number | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
+    const timerWorkerRef = useRef<Worker | null>(null);
 
     // Track isPlaying in a ref for access inside async/timeout callbacks
     const isPlayingRef = useRef(isPlaying);
@@ -39,8 +39,42 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     }, [sequence]);
 
     // Lookahead constants
-    const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
+    // const lookahead = 25.0; // Handled by worker now
     const scheduleAheadTime = 0.1; // How far ahead to schedule audio (in seconds)
+
+    // Initialize Worker
+    useEffect(() => {
+        const worker = new Worker(new URL('../workers/timer.worker.ts', import.meta.url), { type: 'module' });
+        timerWorkerRef.current = worker;
+
+        worker.onmessage = (e) => {
+            if (e.data === 'tick') {
+                scheduler();
+            }
+        };
+
+        worker.postMessage({ interval: 25.0 });
+
+        return () => {
+            worker.terminate();
+        };
+    }, []);
+
+    // Handle Visibility Change (iOS Fix)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+                    audioCtxRef.current.resume();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     useEffect(() => {
         if (isPlaying) {
@@ -54,58 +88,48 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
             }
 
             if (isPaused) {
-                if (timerIDRef.current) {
-                    window.clearInterval(timerIDRef.current);
-                    timerIDRef.current = null;
-                }
+                timerWorkerRef.current?.postMessage('stop');
             } else {
-                if (!timerIDRef.current) {
-                    // Resuming or Starting
-                    if (currentBeat === -1) {
-                        nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
-                        // Start with count-in (-4) unless resuming logic says otherwise (but currentBeat === -1 implies stopped)
-                        // If starting fresh in repeat mode? Still do count-in.
-                        currentStepRef.current = -4;
-                    } else {
-                        // Resuming from Pause
-                        nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
+                // Resuming or Starting
+                if (currentBeat === -1) {
+                    nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
+                    // Start with count-in (-4)
+                    currentStepRef.current = -4;
+                } else {
+                    // Resuming from Pause
+                    nextNoteTimeRef.current = audioCtxRef.current!.currentTime + 0.1;
 
-                        // If resuming and we are out of bounds in repeat mode, jump to start
-                        if (isRepeatMode && repeatRange) {
-                            if (currentBeat < repeatRange.start || currentBeat > repeatRange.end) {
-                                currentStepRef.current = repeatRange.start;
-                            } else {
-                                // Resume from current, logic in nextNote will handle wrapping
-                                currentStepRef.current = currentBeat;
-                            }
+                    // If resuming and we are out of bounds in repeat mode, jump to start
+                    if (isRepeatMode && repeatRange) {
+                        if (currentBeat < repeatRange.start || currentBeat > repeatRange.end) {
+                            currentStepRef.current = repeatRange.start;
                         } else {
                             currentStepRef.current = currentBeat;
                         }
+                    } else {
+                        currentStepRef.current = currentBeat;
                     }
-                    timerIDRef.current = window.setInterval(() => scheduler(), lookahead);
                 }
+                timerWorkerRef.current?.postMessage('start');
             }
         } else {
-            if (timerIDRef.current) {
-                window.clearInterval(timerIDRef.current);
-                timerIDRef.current = null;
-            }
+            timerWorkerRef.current?.postMessage('stop');
             setCurrentBeat(-1);
             currentStepRef.current = 0;
         }
 
         return () => {
-            if (timerIDRef.current) {
-                window.clearInterval(timerIDRef.current);
-                timerIDRef.current = null;
-            }
+            // Don't terminate worker here, just stop it
+            timerWorkerRef.current?.postMessage('stop');
         };
     }, [isPlaying, isPaused]);
 
     const scheduler = () => {
         // while there are notes that will need to play before the next interval, 
         // schedule them and advance the pointer.
-        while (nextNoteTimeRef.current < audioCtxRef.current!.currentTime + scheduleAheadTime) {
+        if (!audioCtxRef.current) return;
+
+        while (nextNoteTimeRef.current < audioCtxRef.current.currentTime + scheduleAheadTime) {
             scheduleNote(currentStepRef.current, nextNoteTimeRef.current);
             nextNote();
         }
@@ -138,7 +162,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
         if (isRepeatMode && repeatRange) {
             loopStart = repeatRange.start;
-            loopEnd = repeatRange.end + 1; // End is exclusive for modulo logic usually, but here we want to loop back to start AFTER end
+            loopEnd = repeatRange.end + 1;
         } else {
             if (lastPopulatedIndex !== -1) {
                 const maxMeasureIndex = Math.floor(lastPopulatedIndex / 4);
@@ -168,22 +192,18 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
         const delay = (time - audioCtxRef.current!.currentTime) * 1000;
         setTimeout(() => {
             // Check if still playing before updating state to avoid race condition
-            // where stop is pressed but this timeout still fires
             if (!isPlayingRef.current) return;
 
             // Only update currentBeat if >= 0 to avoid highlighting weird slots negative
             if (beatNumber >= 0) {
                 setCurrentBeat(beatNumber);
             } else {
-                setCurrentBeat(-1); // Or keep -1
+                setCurrentBeat(-1);
             }
         }, Math.max(0, delay));
 
         if (beatNumber < 0) {
             // Count-in clicks
-            // beatNumber is -4, -3, -2, -1
-            // Accent on -4 (which represents the '1' of the pre-measure)
-            // Or -4, -3, -2, -1 corresponding to 1, 2, 3, 4 of count-in
             const isAccent = (beatNumber === -4);
             playClickAt(time, isAccent);
         } else {
@@ -192,12 +212,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
             if (voicing) {
                 const currentPattern = RHYTHM_PATTERNS[selectedRhythmRef.current] || RHYTHM_PATTERNS['Four on the Floor'];
-                // Determine beat index within 4/4 measure (0, 1, 2, 3)
                 const beatIndex = beatNumber % 4;
-
-                // Get triggers using adaptive logic
-                // Check previous beat for harmonic context. 
-                // Note: If beatNumber is 0, prevVoicing is undefined (treated as null), forcing a play.
                 const prevVoicing = beatNumber > 0 ? sequenceRef.current[beatNumber - 1] : null;
                 const triggers = getAdaptiveTriggers(currentPattern, beatIndex, voicing, prevVoicing);
 
@@ -205,12 +220,6 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
                     triggers.forEach(trigger => {
                         const secondsPerBeat = 60.0 / bpm;
                         const triggerTime = time + (trigger.offset * secondsPerBeat);
-
-                        // Calculate duration in seconds
-                        // Default to 1.0 (beat-relative?) No, in audio.ts defaults to 1.0s.
-                        // Let's standardise: trigger.duration is in BEATS.
-                        // If not specified, default to 1 beat (often too long for fast tempos, but okay for quarter note strum)
-                        // Actually, 'Four on Floor' is quarters. 
                         const durationBeats = trigger.duration || 1.0;
                         const durationSeconds = durationBeats * secondsPerBeat;
 
@@ -222,8 +231,6 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     };
 
     const stepTo = (step: number) => {
-        // Allow stepTo to override bounds if manual, but generally respected? 
-        // Actually stepTo is used for manual navigation.
         const safeStep = Math.max(0, Math.min(step, 159));
         currentStepRef.current = safeStep;
         setCurrentBeat(safeStep);
@@ -231,4 +238,3 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
     return { currentBeat, stepTo };
 }
-
