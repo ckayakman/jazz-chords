@@ -38,6 +38,12 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
         sequenceRef.current = sequence;
     }, [sequence]);
 
+    // Track bpm in ref
+    const bpmRef = useRef(bpm);
+    useEffect(() => {
+        bpmRef.current = bpm;
+    }, [bpm]);
+
     // Lookahead constants
     // const lookahead = 25.0; // Handled by worker now
     const scheduleAheadTime = 0.1; // How far ahead to schedule audio (in seconds)
@@ -136,7 +142,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     };
 
     const nextNote = () => {
-        const secondsPerBeat = 60.0 / bpm;
+        const secondsPerBeat = 60.0 / bpmRef.current;
         nextNoteTimeRef.current += secondsPerBeat;
 
         // If in count-in, just increment
@@ -218,7 +224,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
                 if (triggers && triggers.length > 0) {
                     triggers.forEach(trigger => {
-                        const secondsPerBeat = 60.0 / bpm;
+                        const secondsPerBeat = 60.0 / bpmRef.current;
                         const triggerTime = time + (trigger.offset * secondsPerBeat);
                         const durationBeats = trigger.duration || 1.0;
                         const durationSeconds = durationBeats * secondsPerBeat;
