@@ -1,11 +1,13 @@
 import { Note, transpose, parseChord, getNotesFromIntervals, getIntervalMap } from './music-theory';
 import { generateVoicings, Voicing, VoicingType } from './voicing-generator';
 
-export type ProgressionType = 'MajorII_V_I' | 'MinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges' | 'MajorI_vi_ii_V' | 'Major_iii_vi_ii_V' | 'MinorTurnaround' | 'RhythmChangesBridge' | 'ExtendedTurnaround' | 'TakeTheATrain';
+export type ProgressionType = 'LongMajorII_V_I' | 'LongMinorII_V_I' | 'ShortMajorII_V_I' | 'ShortMinorII_V_I' | 'MajorBlues' | 'MinorBlues' | 'RhythmChanges' | 'MajorI_vi_ii_V' | 'Major_iii_vi_ii_V' | 'MinorTurnaround' | 'RhythmChangesBridge' | 'ExtendedTurnaround' | 'TakeTheATrain';
 
 export const PROGRESSION_LABELS: Record<ProgressionType, string> = {
-    'MajorII_V_I': 'Major ii-V-I',
-    'MinorII_V_I': 'Minor ii-V-i',
+    'LongMajorII_V_I': 'Long Major ii-V-I',
+    'LongMinorII_V_I': 'Long Minor ii-V-i',
+    'ShortMajorII_V_I': 'Short Major ii-V-I',
+    'ShortMinorII_V_I': 'Short Minor ii-V-i',
     'MajorBlues': 'Major Blues (12-Bar)',
     'MinorBlues': 'Minor Blues (12-Bar)',
     'RhythmChanges': 'Rhythm Changes (A Section)',
@@ -26,15 +28,25 @@ export const AVAILABLE_KEYS: Note[] = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G'
 // Note: For Minor keys, we will treat the input key as the minor root, but we need to handle the relative intervals carefully.
 // Actually, let's keep it simple: We transpose the root and append the suffix.
 const PROGRESSIONS: Record<ProgressionType, { degrees: number[], suffixes: string[], measures: number[] }> = {
-    'MajorII_V_I': {
+    'LongMajorII_V_I': {
         degrees: [2, 7, 0, 0], // Semitones from root: II(2), V(7), I(0)
         suffixes: ['m7', '7', 'maj7', 'maj7'],
         measures: [1, 1, 1, 1] // 4 measures
     },
-    'MinorII_V_I': {
+    'LongMinorII_V_I': {
         degrees: [2, 7, 0, 0], // II(2), V(7), I(0) - but minor
         suffixes: ['m7b5', '7alt', 'm7', 'm7'],
         measures: [1, 1, 1, 1]
+    },
+    'ShortMajorII_V_I': {
+        degrees: [2, 7, 0], // II(2), V(7), I(0)
+        suffixes: ['m7', '7', 'maj7'],
+        measures: [0.5, 0.5, 1] // 2 measures total
+    },
+    'ShortMinorII_V_I': {
+        degrees: [2, 7, 0], // II(2), V(7), I(0) - but minor
+        suffixes: ['m7b5', '7alt', 'm7'],
+        measures: [0.5, 0.5, 1] // 2 measures total
     },
     'MajorI_vi_ii_V': {
         degrees: [0, 9, 2, 7], // Root, vi(9), ii(2), V(7)

@@ -10,7 +10,7 @@ interface ProgressionModalProps {
 }
 
 const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, onLoad }) => {
-    const [selectedProg, setSelectedProg] = useState<ProgressionType>('MajorII_V_I');
+    const [selectedProg, setSelectedProg] = useState<ProgressionType>('LongMajorII_V_I');
     const [selectedKey, setSelectedKey] = useState<string>('C');
     const [selectedVoicingType, setSelectedVoicingType] = useState<VoicingType>('Drop2');
     const [selectedStringSet, setSelectedStringSet] = useState<string>('Top'); // 'Top', 'Middle', 'Bottom', 'Low', 'High'
