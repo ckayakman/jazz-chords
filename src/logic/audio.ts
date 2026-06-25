@@ -2,7 +2,8 @@ import { FretPosition } from './voicing-generator';
 
 let audioCtx: AudioContext | null = null;
 let masterCompressor: DynamicsCompressorNode | null = null;
-let reverbInputNode: GainNode | null = null;
+let chordGainNode: GainNode | null = null;
+let lickGainNode: GainNode | null = null;
 
 export function getAudioContext(): AudioContext {
     if (!audioCtx) {
@@ -24,32 +25,19 @@ function getMasterCompressor(): DynamicsCompressorNode {
     return masterCompressor;
 }
 
-function getReverbInput(): GainNode {
-    if (reverbInputNode) return reverbInputNode;
+function getMixGains(): { chordGain: GainNode; lickGain: GainNode } {
     const ctx = getAudioContext();
-
-    const sampleRate = ctx.sampleRate;
-    const irBuffer = ctx.createBuffer(2, Math.ceil(sampleRate * 1.2), sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-        const data = irBuffer.getChannelData(ch);
-        for (let i = 0; i < data.length; i++) {
-            const t = i / sampleRate;
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 4.5);
-        }
+    if (!chordGainNode) {
+        chordGainNode = ctx.createGain();
+        chordGainNode.gain.value = 1.0;
+        chordGainNode.connect(getMasterCompressor());
     }
-
-    const convolver = ctx.createConvolver();
-    convolver.buffer = irBuffer;
-
-    const wetGain = ctx.createGain();
-    wetGain.gain.value = 0.18;
-
-    reverbInputNode = ctx.createGain();
-    reverbInputNode.connect(convolver);
-    convolver.connect(wetGain);
-    wetGain.connect(getMasterCompressor());
-
-    return reverbInputNode;
+    if (!lickGainNode) {
+        lickGainNode = ctx.createGain();
+        lickGainNode.gain.value = 1.0;
+        lickGainNode.connect(getMasterCompressor());
+    }
+    return { chordGain: chordGainNode, lickGain: lickGainNode };
 }
 
 // Very gentle tanh saturation for amp warmth
@@ -79,8 +67,6 @@ export function playChordAt(positions: FretPosition[], startTime: number, durati
     const ctx = getAudioContext();
     if (ctx.state === 'suspended') ctx.resume();
 
-    const compressor = getMasterCompressor();
-    const reverb = getReverbInput();
     const sortedPositions = [...positions].sort((a, b) => a.string - b.string);
 
     sortedPositions.forEach((pos, index) => {
@@ -140,9 +126,6 @@ export function playChordAt(positions: FretPosition[], startTime: number, durati
         envGain.gain.setTargetAtTime(sustainLevel, decayStartTime, 0.10);
         envGain.gain.setTargetAtTime(0.001, releaseStartTime, 0.06);
 
-        const reverbSend = ctx.createGain();
-        reverbSend.gain.value = 0.35;
-
         // Signal chain
         oscFund.connect(fundGain);
         oscH2.connect(h2Gain);
@@ -152,9 +135,8 @@ export function playChordAt(positions: FretPosition[], startTime: number, durati
         h3Gain.connect(shaper);
         shaper.connect(filter);
         filter.connect(envGain);
-        envGain.connect(compressor);
-        envGain.connect(reverbSend);
-        reverbSend.connect(reverb);
+        const { chordGain } = getMixGains();
+        envGain.connect(chordGain);
 
         const stopTime = releaseStartTime + 0.4;
         oscFund.start(noteStart);
@@ -190,4 +172,68 @@ export function playClickAt(time: number, isAccent: boolean) {
 
     osc.start(time);
     osc.stop(time + 0.1);
+}
+
+export function playMidiNoteAt(midi: number, time: number, duration: number = 1.0) {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+
+    const oscFund = ctx.createOscillator();
+    oscFund.type = 'sine';
+    oscFund.frequency.setValueAtTime(freq, time);
+
+    const oscH2 = ctx.createOscillator();
+    oscH2.type = 'sine';
+    oscH2.frequency.setValueAtTime(freq * 2, time);
+
+    const fundGain = ctx.createGain();
+    fundGain.gain.value = 0.7;
+
+    const h2Gain = ctx.createGain();
+    h2Gain.gain.setValueAtTime(0.18, time);
+    h2Gain.gain.setTargetAtTime(0.001, time + 0.015, 0.10);
+
+    const shaper = createWaveShaper(ctx);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2200, time);
+    filter.Q.value = 0.6;
+
+    const envGain = ctx.createGain();
+    const attackTime = 0.008;
+    const peakLevel = 0.32;
+    const sustainLevel = peakLevel * 0.45;
+    const effectiveDuration = Math.max(duration, attackTime + 0.08);
+    const decayStartTime = time + attackTime;
+    const releaseStartTime = Math.max(decayStartTime + 0.04, time + effectiveDuration - 0.08);
+
+    envGain.gain.setValueAtTime(0, time);
+    envGain.gain.linearRampToValueAtTime(peakLevel, decayStartTime);
+    envGain.gain.setTargetAtTime(sustainLevel, decayStartTime, 0.08);
+    envGain.gain.setTargetAtTime(0.001, releaseStartTime, 0.05);
+
+    const { lickGain } = getMixGains();
+    oscFund.connect(fundGain);
+    oscH2.connect(h2Gain);
+    fundGain.connect(shaper);
+    h2Gain.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(envGain);
+    envGain.connect(lickGain);
+
+    const stopTime = releaseStartTime + 0.24;
+    oscFund.start(time);
+    oscH2.start(time);
+    oscFund.stop(stopTime);
+    oscH2.stop(stopTime);
+}
+
+export function getChordGain() {
+    return getMixGains().chordGain;
+}
+
+export function getLickGain() {
+    return getMixGains().lickGain;
 }

@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import { Music, Check } from 'lucide-react';
-import { AVAILABLE_KEYS, PROGRESSION_LABELS, ProgressionType } from '../logic/progression-generator';
+import { AVAILABLE_KEYS, PROGRESSION_LABELS, ProgressionType, generateProgressionSequence } from '../logic/progression-generator';
 import { VoicingType } from '../logic/voicing-generator';
+import generateLick from '../../logic/lick-generator';
+import { playChordAt, playMidiNoteAt, getAudioContext } from '../logic/audio';
+import { getNoteIndex } from '../logic/music-theory';
 
 interface ProgressionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLoad: (progType: ProgressionType, key: string, voicingType: VoicingType, stringSet: number[]) => void;
+    guitarLickEnabled?: boolean;
+    onToggleGuitarLick?: () => void;
+    lickDifficulty?: number;
+    onSetLickDifficulty?: (d: number) => void;
+    bpm?: number;
 }
 
-const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, onLoad }) => {
+const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, onLoad, guitarLickEnabled, onToggleGuitarLick, lickDifficulty, onSetLickDifficulty, bpm }) => {
     const [selectedProg, setSelectedProg] = useState<ProgressionType>('LongMajorII_V_I');
     const [selectedKey, setSelectedKey] = useState<string>('C');
     const [selectedVoicingType, setSelectedVoicingType] = useState<VoicingType>('Drop2');
@@ -165,7 +173,66 @@ const ProgressionModal: React.FC<ProgressionModalProps> = ({ isOpen, onClose, on
 
                 </div>
 
-                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                            {/* Guitar Lick Controls */}
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                                <button
+                                    onClick={() => onToggleGuitarLick && onToggleGuitarLick()}
+                                    style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--border-color)', background: guitarLickEnabled ? 'var(--primary-color)' : 'transparent', color: guitarLickEnabled ? '#000' : 'var(--text-color)', cursor: 'pointer' }}
+                                >
+                                    {guitarLickEnabled ? 'Guitar Lick: ON' : 'Guitar Lick: OFF'}
+                                </button>
+
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                    <button className={`control-btn ${lickDifficulty === 1 ? 'btn-stop' : 'btn-clear'}`} onClick={() => onSetLickDifficulty && onSetLickDifficulty(1)}>Easy</button>
+                                    <button className={`control-btn ${lickDifficulty === 2 ? 'btn-stop' : 'btn-clear'}`} onClick={() => onSetLickDifficulty && onSetLickDifficulty(2)}>Medium</button>
+                                    <button className={`control-btn ${lickDifficulty === 3 ? 'btn-stop' : 'btn-clear'}`} onClick={() => onSetLickDifficulty && onSetLickDifficulty(3)}>Hard</button>
+                                </div>
+
+                                <div style={{ marginLeft: 'auto' }}>
+                                    <button
+                                        onClick={async () => {
+                                            // Build a progression sequence for preview
+                                            const strings = getStringSet(selectedVoicingType, selectedStringSet);
+                                            const seq = generateProgressionSequence(selectedProg, selectedKey, selectedVoicingType, strings);
+                                            // Build progression from first voicing per measure
+                                            const progression: { rootMidi: number; type?: string; durationBeats?: number }[] = [];
+                                            for (let m = 0; m < seq.length; m += 4) {
+                                                const v = seq[m];
+                                                if (v && v.positions && v.positions.length > 0) {
+                                                    const rootName = v.positions[0].note as any as string;
+                                                    const idx = getNoteIndex(rootName);
+                                                    const rootMidi = (isNaN(idx) ? 60 : 60 + idx);
+                                                    progression.push({ rootMidi, durationBeats: 4 });
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                            if (progression.length === 0) progression.push({ rootMidi: 60, durationBeats: 4 });
+
+                                            const lick = generateLick(progression, undefined, lickDifficulty || 1, { fretMin: 1, fretMax: 18 });
+                                            const ctx = getAudioContext();
+                                            const secondsPerBeat = 60.0 / (bpm || 90);
+                                            const startTime = ctx.currentTime + 0.05;
+                                            lick.notes.forEach(n => {
+                                                const t = startTime + n.startBeat * secondsPerBeat;
+                                                const dur = n.durationBeats * secondsPerBeat;
+                                                if (typeof n.string === 'number' && typeof n.fret === 'number') {
+                                                    const stringIdx = n.string + 1;
+                                                    const pos = [{ string: stringIdx, fret: n.fret, note: 'C' as any }];
+                                                    playChordAt(pos, t, dur);
+                                                } else {
+                                                    playMidiNoteAt(n.pitch, t, dur);
+                                                }
+                                            });
+                                        }}
+                                        style={{ padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid var(--primary-color)', background: 'var(--primary-color)', color: 'black', cursor: 'pointer' }}
+                                    >
+                                        Preview Lick
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                     <button
                         onClick={onClose}
                         style={{

@@ -37,8 +37,10 @@ function App() {
     const [bpm, setBpm] = useState(90)
     const [selectedRhythm, setSelectedRhythm] = useState<RhythmPatternKey>('Four on the Floor')
     const [hasInteracted, setHasInteracted] = useState(false)
+    const [guitarLickEnabled, setGuitarLickEnabled] = useState(false);
+    const [lickDifficulty, setLickDifficulty] = useState(1);
 
-    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange, selectedRhythm })
+    const { currentBeat, stepTo } = useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode, repeatRange, selectedRhythm, guitarLickEnabled, lickDifficulty })
 
     // Sync active slot when paused to allow editing
     useEffect(() => {
@@ -520,6 +522,10 @@ function App() {
                 onSetRepeatRange={setRepeatRange}
                 selectedRhythm={selectedRhythm}
                 onRhythmChange={(val) => setSelectedRhythm(val)}
+                guitarLickEnabled={guitarLickEnabled}
+                onToggleGuitarLick={() => setGuitarLickEnabled(v => !v)}
+                lickDifficulty={lickDifficulty}
+                onSetLickDifficulty={(d: number) => setLickDifficulty(d)}
             />
 
             <main>

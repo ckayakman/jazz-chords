@@ -9,6 +9,7 @@ import ChordDiagram from './ChordDiagram';
 import SaveModal from './SaveModal';
 import ProgressionModal from './ProgressionModal';
 import { RHYTHM_PATTERNS } from '../logic/rhythm-patterns';
+// Guitar lick controls moved to ProgressionModal
 
 interface SequencerProps {
     sequence: ((Voicing & { intervalMap?: Record<string, string> }) | null)[];
@@ -36,6 +37,10 @@ interface SequencerProps {
     onSetRepeatRange: (range: { start: number, end: number } | null) => void;
     selectedRhythm: string;
     onRhythmChange: (rhythm: any) => void;
+    guitarLickEnabled?: boolean;
+    onToggleGuitarLick?: () => void;
+    lickDifficulty?: number;
+    onSetLickDifficulty?: (d: number) => void;
 }
 
 const Sequencer: React.FC<SequencerProps> = ({
@@ -63,7 +68,11 @@ const Sequencer: React.FC<SequencerProps> = ({
     onToggleRepeatMode,
     onSetRepeatRange,
     selectedRhythm,
-    onRhythmChange
+    onRhythmChange,
+    guitarLickEnabled,
+    onToggleGuitarLick,
+    lickDifficulty,
+    onSetLickDifficulty
 }) => {
     // Local state for input to allow typing without immediate clamping
     const [localBpm, setLocalBpm] = React.useState(bpm.toString());
@@ -345,6 +354,8 @@ const Sequencer: React.FC<SequencerProps> = ({
                         )}
                     </div>
 
+                    
+
                     {/* Play/Stop Button */}
                     <button
                         onClick={isPlaying ? onStop : onPlay}
@@ -600,6 +611,11 @@ const Sequencer: React.FC<SequencerProps> = ({
                         alert('Could not generate voicings for this progression in this key/range. Try a different range or voicing type.');
                     }
                 }}
+                guitarLickEnabled={guitarLickEnabled}
+                onToggleGuitarLick={onToggleGuitarLick}
+                lickDifficulty={lickDifficulty}
+                onSetLickDifficulty={onSetLickDifficulty}
+                bpm={bpm}
             />
         </details >
     );
