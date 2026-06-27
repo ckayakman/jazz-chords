@@ -5,6 +5,10 @@ let interval = 25.0;
 
 self.onmessage = function (e: MessageEvent) {
     if (e.data === 'start') {
+        if (timerID) {
+            self.clearInterval(timerID);
+            timerID = null;
+        }
         if (interval > 0) {
             timerID = self.setInterval(function () {
                 self.postMessage('tick');

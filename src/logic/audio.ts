@@ -6,10 +6,37 @@ let chordGainNode: GainNode | null = null;
 let lickGainNode: GainNode | null = null;
 
 export function getAudioContext(): AudioContext {
+    if (audioCtx && audioCtx.state === 'closed') {
+        audioCtx = null;
+        masterCompressor = null;
+        chordGainNode = null;
+        lickGainNode = null;
+    }
+
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     return audioCtx!;
+}
+
+export async function resetAudioContext(): Promise<void> {
+    if (!audioCtx) {
+        return;
+    }
+
+    const ctx = audioCtx;
+    audioCtx = null;
+    masterCompressor = null;
+    chordGainNode = null;
+    lickGainNode = null;
+
+    if (ctx.state !== 'closed') {
+        try {
+            await ctx.close();
+        } catch (error) {
+            console.warn('AudioContext close failed', error);
+        }
+    }
 }
 
 function getMasterCompressor(): DynamicsCompressorNode {
@@ -139,6 +166,31 @@ export function playChordAt(positions: FretPosition[], startTime: number, durati
         envGain.connect(chordGain);
 
         const stopTime = releaseStartTime + 0.4;
+
+        let cleaned = false;
+        const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
+            oscFund.disconnect();
+            oscH2.disconnect();
+            oscH3.disconnect();
+            fundGain.disconnect();
+            h2Gain.disconnect();
+            h3Gain.disconnect();
+            shaper.disconnect();
+            filter.disconnect();
+            envGain.disconnect();
+            oscFund.onended = null;
+            oscH2.onended = null;
+            oscH3.onended = null;
+            window.clearTimeout(cleanupTimer);
+        };
+
+        const cleanupTimer = window.setTimeout(cleanup, Math.max(0, (stopTime - ctx.currentTime) * 1000 + 300));
+
+        oscFund.onended = cleanup;
+        oscH2.onended = cleanup;
+        oscH3.onended = cleanup;
         oscFund.start(noteStart);
         oscH2.start(noteStart);
         oscH3.start(noteStart);
@@ -170,6 +222,19 @@ export function playClickAt(time: number, isAccent: boolean) {
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
 
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        osc.disconnect();
+        gainNode.disconnect();
+        osc.onended = null;
+        window.clearTimeout(cleanupTimer);
+    };
+
+    const cleanupTimer = window.setTimeout(cleanup, Math.max(0, (time + 0.1 - ctx.currentTime) * 1000 + 300));
+
+    osc.onended = cleanup;
     osc.start(time);
     osc.stop(time + 0.1);
 }
@@ -224,6 +289,28 @@ export function playMidiNoteAt(midi: number, time: number, duration: number = 1.
     envGain.connect(lickGain);
 
     const stopTime = releaseStartTime + 0.24;
+
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        oscFund.disconnect();
+        oscH2.disconnect();
+        fundGain.disconnect();
+        h2Gain.disconnect();
+        shaper.disconnect();
+        filter.disconnect();
+        envGain.disconnect();
+        oscFund.onended = null;
+        oscH2.onended = null;
+        window.clearTimeout(cleanupTimer);
+    };
+
+    const cleanupTimer = window.setTimeout(cleanup, Math.max(0, (stopTime - ctx.currentTime) * 1000 + 300));
+
+    oscFund.onended = cleanup;
+    oscH2.onended = cleanup;
+
     oscFund.start(time);
     oscH2.start(time);
     oscFund.stop(stopTime);

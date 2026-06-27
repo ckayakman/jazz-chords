@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Voicing } from '../logic/voicing-generator';
-import { playChordAt, playClickAt, getAudioContext, playMidiNoteAt, getChordGain } from '../logic/audio';
+import { playChordAt, playClickAt, getAudioContext, playMidiNoteAt, getChordGain, resetAudioContext } from '../logic/audio';
 import { RHYTHM_PATTERNS, RhythmPatternKey, getAdaptiveTriggers } from '../logic/rhythm-patterns';
 import generateLick, { Lick } from '../../logic/lick-generator';
 import { getNoteIndex } from '../logic/music-theory';
@@ -23,6 +23,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     const currentStepRef = useRef<number>(0);
     const audioCtxRef = useRef<AudioContext | null>(null);
     const timerWorkerRef = useRef<Worker | null>(null);
+    const scheduledTimeoutsRef = useRef<number[]>([]);
     // Lick state
     const lickStateRef = useRef<{ currentLick: Lick | null; lickRepeatsLeft: number; progRepeatsLeft: number } | null>(null);
 
@@ -57,7 +58,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
 
     // Lookahead constants
     // const lookahead = 25.0; // Handled by worker now
-    const scheduleAheadTime = 0.1; // How far ahead to schedule audio (in seconds)
+    const scheduleAheadTime = 0.25; // How far ahead to schedule audio (in seconds)
 
     // Initialize Worker
     useEffect(() => {
@@ -92,6 +93,13 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
+
+    const clearScheduledTimeouts = () => {
+        scheduledTimeoutsRef.current.forEach((timeoutId) => {
+            window.clearTimeout(timeoutId);
+        });
+        scheduledTimeoutsRef.current = [];
+    };
 
     useEffect(() => {
         if (isPlaying) {
@@ -133,15 +141,26 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
             }
         } else {
             timerWorkerRef.current?.postMessage('stop');
+            clearScheduledTimeouts();
             setCurrentBeat(-1);
             currentStepRef.current = 0;
+            nextNoteTimeRef.current = 0;
+            if (audioCtxRef.current) {
+                audioCtxRef.current = null;
+            }
             // Clear lick state when stopping
-            if (lickStateRef.current) lickStateRef.current.currentLick = null;
+            if (lickStateRef.current) {
+                lickStateRef.current.currentLick = null;
+                lickStateRef.current.lickRepeatsLeft = 4;
+                lickStateRef.current.progRepeatsLeft = 4;
+            }
+            resetAudioContext();
         }
 
         return () => {
             // Don't terminate worker here, just stop it
             timerWorkerRef.current?.postMessage('stop');
+            clearScheduledTimeouts();
         };
     }, [isPlaying, isPaused]);
 
@@ -170,9 +189,9 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     };
 
     const scheduler = () => {
-        // while there are notes that will need to play before the next interval, 
+        // while there are notes that will need to play before the next interval,
         // schedule them and advance the pointer.
-        if (!audioCtxRef.current) return;
+        if (!audioCtxRef.current || !isPlayingRef.current) return;
 
         while (nextNoteTimeRef.current < audioCtxRef.current.currentTime + scheduleAheadTime) {
             scheduleNote(currentStepRef.current, nextNoteTimeRef.current);
@@ -278,8 +297,11 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
     };
 
     const scheduleNote = (beatNumber: number, time: number) => {
+        if (!isPlayingRef.current) return;
+
         const delay = (time - audioCtxRef.current!.currentTime) * 1000;
-        setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
+            scheduledTimeoutsRef.current = scheduledTimeoutsRef.current.filter((id) => id !== timeoutId);
             // Check if still playing before updating state to avoid race condition
             if (!isPlayingRef.current) return;
 
@@ -290,6 +312,7 @@ export function useSequencer({ sequence, bpm, isPlaying, isPaused, isRepeatMode,
                 setCurrentBeat(-1);
             }
         }, Math.max(0, delay));
+        scheduledTimeoutsRef.current.push(timeoutId);
 
         if (beatNumber < 0) {
             // Count-in clicks
