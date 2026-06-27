@@ -329,12 +329,6 @@ function chooseEndingPitch(root: number, type: string | undefined, nextChord?: {
   return chordThird(root, type);
 }
 
-function chooseLandingPitch(prevPitch: number, root: number, type: string | undefined) {
-  const targetThird = chordThird(root, type);
-  const candidates = [targetThird - 12, targetThird, targetThird + 12].filter((p) => p >= 0 && p < 128);
-  return candidates.length > 0 ? candidates[nearestPitchIndex(prevPitch, candidates)] : targetThird;
-}
-
 function chooseNextLickPitch(
   prevPitch: number,
   phraseType: string,
